@@ -14,8 +14,8 @@ import { fetchSource, githubCloneUrl, type CommitInfo } from './git.ts';
 import { readProjectConfig, resolveOutputDirectory, resolveSettings } from './settings.ts';
 import { execPath, shQuote } from './paths.ts';
 
-export { checkExecutor, kill, run } from './executor.ts';
-export { toWslPath, execPath } from './paths.ts';
+export { capture, checkExecutor, kill, run } from './executor.ts';
+export { toWslPath, execPath, shQuote } from './paths.ts';
 
 export type BuildPhase =
   | 'initializing'

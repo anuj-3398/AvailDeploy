@@ -214,7 +214,8 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
       text: `Imported ${repoFullName}`,
     });
 
-    if (repoProvider === 'github') void poller.seed(project);
+    // Record current branch heads so the first poll does not deploy them all.
+    void poller.seed(project);
 
     let deployment = null;
     if (body.deploy !== false) {

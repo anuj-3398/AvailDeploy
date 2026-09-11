@@ -31,7 +31,7 @@ any address on that domain is allowed in.
 
 | Vercel feature | Avail Deploy |
 | --- | --- |
-| Git integration | GitHub OAuth app **or** personal access token; webhooks (`push`, `pull_request`) with HMAC verification, plus polling for hosts without a public URL |
+| Git integration | GitHub OAuth app **or** personal access token; webhooks (`push`, `pull_request`) with HMAC verification, plus polling for hosts without a public URL — including plain local directories |
 | Framework detection | 74 presets ported from the Vercel CLI, with the same `every`/`some`/`supersedes` algorithm |
 | Builds | Install → build in an isolated workspace, live-streamed logs, build cache, cancellation, concurrency limit |
 | Production deploys | Pushes to the production branch publish to `<project>.avail.localhost` |
@@ -93,6 +93,26 @@ domain joins as a **member**.
    every 60s instead.
 
 Push to a branch and you get a preview; push to `main` and production updates.
+
+### What triggers a deployment
+
+| Event | GitHub repo + webhook | Polling (GitHub or a local path) |
+| --- | --- | --- |
+| Commit on the production branch | immediate, production | within the poll interval, production |
+| Commit on any other branch | immediate, preview | within the poll interval, preview |
+| Branch created | immediate, preview | within the poll interval, preview |
+| Pull request opened / updated | immediate, preview + a comment on the PR | picked up as a branch (no PR link) |
+| Branch deleted | ignored | ignored |
+
+Polling watches whatever git can see: a GitHub repository through the API, or a
+local directory through `git for-each-ref`. It reads committed refs, so an
+edit only deploys once you commit it — uncommitted working-tree changes are
+never deployed.
+
+Branch heads are recorded when a project is imported, so the first poll of an
+existing repository does not deploy every branch at once. Set `autoDeploy` off
+per project to disable this entirely, or `previewDeploys` off to keep only the
+production branch automatic.
 
 ---
 
