@@ -14,7 +14,7 @@ import { AuthContext } from './auth.ts';
 import { ProjectsContext } from './projects.ts';
 import { ProjectLayout } from './components/ProjectLayout.tsx';
 import { ProjectSwitcher } from './components/ProjectSwitcher.tsx';
-import { Spinner } from './components/ui.tsx';
+import { Logo, Spinner } from './components/ui.tsx';
 import { DeploymentPage } from './pages/DeploymentPage.tsx';
 import { GitSettings } from './pages/GitSettings.tsx';
 import { Login } from './pages/Login.tsx';
@@ -49,7 +49,7 @@ function Topbar({
   return (
     <header className="topbar">
       <NavLink to="/" className="brand">
-        <span className="mark">▲</span>
+        <Logo size={20} />
         <span>
           Avail <small>Deploy</small>
         </span>

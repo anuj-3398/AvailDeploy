@@ -96,11 +96,20 @@ pre,
   gap: 10px;
   font-weight: 600;
   letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
-.brand .mark {
-  font-size: 18px;
-  line-height: 1;
+.logo {
+  flex: none;
+  display: block;
+}
+
+/* The login card centres its heading, so the mark rides with the text. */
+.login-card h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
 }
 
 .brand small {

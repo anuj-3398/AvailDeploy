@@ -1,6 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import type { Deployment, DeploymentState } from '../api.ts';
 
+/**
+ * The Avail mark, served from `apps/dashboard/public/avail-logo.png`.
+ * Replacing that one file changes the logo in the top bar, the login card and
+ * the browser tab — nothing here needs to change.
+ */
+export function Logo({ size = 20 }: { size?: number }) {
+  return (
+    <img
+      className="logo"
+      src="/avail-logo.png"
+      width={size}
+      height={size}
+      alt=""
+      aria-hidden
+    />
+  );
+}
+
 const STATE_CLASS: Record<DeploymentState, string> = {
   QUEUED: 'queued',
   INITIALIZING: 'building',

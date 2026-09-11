@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api, ApiError, type User } from '../api.ts';
-import { Alert } from '../components/ui.tsx';
+import { Alert, Logo } from '../components/ui.tsx';
 
 type Step = 'email' | 'code';
 
@@ -128,7 +128,8 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
     <div className="login-wrap">
       <div className="login-card">
         <h1>
-          <span style={{ marginRight: 8 }}>▲</span>Avail Deploy
+          <Logo size={24} />
+          Avail Deploy
         </h1>
         <p className="sub">
           {mode === 'login' ? 'Log in with' : 'Create an account with'} your{' '}
