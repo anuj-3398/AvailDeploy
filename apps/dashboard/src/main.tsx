@@ -11,6 +11,7 @@ import {
 } from 'react-router-dom';
 import { api, type Project, type User } from './api.ts';
 import { AuthContext } from './auth.ts';
+import { ProjectsContext } from './projects.ts';
 import { ProjectLayout } from './components/ProjectLayout.tsx';
 import { ProjectSwitcher } from './components/ProjectSwitcher.tsx';
 import { Spinner } from './components/ui.tsx';
@@ -122,6 +123,32 @@ function App() {
     }
   }, []);
 
+  const upsertProject = useCallback((project: Project) => {
+    setProjects((rows) => {
+      if (!rows) return [project];
+      return rows.some((p) => p.id === project.id)
+        ? rows.map((p) => (p.id === project.id ? project : p))
+        : [project, ...rows];
+    });
+  }, []);
+
+  const removeProject = useCallback((projectId: string) => {
+    setProjects((rows) => rows?.filter((p) => p.id !== projectId) ?? rows);
+    setCurrent((p) => (p?.id === projectId ? null : p));
+  }, []);
+
+  const removeProjectBySlug = useCallback((slug: string) => {
+    setProjects((rows) => rows?.filter((p) => p.slug !== slug) ?? rows);
+    setCurrent((p) => (p?.slug === slug ? null : p));
+  }, []);
+
+  /** The project the user should land on once `projectId` is gone. */
+  const nextSlugAfter = useCallback(
+    (projectId: string) =>
+      projects?.find((p) => p.id !== projectId)?.slug ?? null,
+    [projects]
+  );
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -141,17 +168,9 @@ function App() {
   const onProjectLoaded = useCallback(
     (project: Project | null) => {
       setCurrent(project);
-      if (project) {
-        setProjects((rows) =>
-          rows?.some((p) => p.id === project.id)
-            ? rows.map((p) => (p.id === project.id ? project : p))
-            : rows
-              ? [project, ...rows]
-              : rows
-        );
-      }
+      if (project) upsertProject(project);
     },
-    []
+    [upsertProject]
   );
 
   if (loading) {
@@ -173,51 +192,63 @@ function App() {
 
   return (
     <AuthContext.Provider value={{ user, refresh, signOut }}>
-      <div className="shell">
-        <Topbar
-          user={user}
-          onSignOut={signOut}
-          projects={projects ?? []}
-          current={current}
-        />
-        <Routes>
-          <Route path="/" element={<Home projects={projects} />} />
-          <Route path="/login" element={<Navigate to="/" replace />} />
-          <Route path="/projects" element={<Projects />} />
-          <Route path="/new" element={<NewProject />} />
-          <Route path="/settings/git" element={<GitSettings />} />
-
-          <Route
-            path="/projects/:slug"
-            element={<ProjectLayout onProjectLoaded={onProjectLoaded} />}
-          >
-            <Route index element={<ProjectOverview />} />
-            <Route path="deployments" element={<ProjectDeployments />} />
-            <Route path="logs" element={<ProjectLogs />} />
-            <Route path="settings" element={<ProjectSettings />} />
-            <Route path="settings/:tab" element={<ProjectSettings />} />
-          </Route>
-
-          <Route
-            path="/projects/:slug/deployments/:id"
-            element={<DeploymentPage />}
+      <ProjectsContext.Provider
+        value={{
+          projects: projects ?? [],
+          loaded: projects !== null,
+          reload: loadProjects,
+          upsert: upsertProject,
+          remove: removeProject,
+          removeBySlug: removeProjectBySlug,
+          nextSlugAfter,
+        }}
+      >
+        <div className="shell">
+          <Topbar
+            user={user}
+            onSignOut={signOut}
+            projects={projects ?? []}
+            current={current}
           />
+          <Routes>
+            <Route path="/" element={<Home projects={projects} />} />
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/new" element={<NewProject />} />
+            <Route path="/settings/git" element={<GitSettings />} />
 
-          <Route
-            path="*"
-            element={
-              <div className="container">
-                <div className="empty">
-                  <h2>Page not found</h2>
-                  <NavLink className="btn" to="/">
-                    Back to overview
-                  </NavLink>
+            <Route
+              path="/projects/:slug"
+              element={<ProjectLayout onProjectLoaded={onProjectLoaded} />}
+            >
+              <Route index element={<ProjectOverview />} />
+              <Route path="deployments" element={<ProjectDeployments />} />
+              <Route path="logs" element={<ProjectLogs />} />
+              <Route path="settings" element={<ProjectSettings />} />
+              <Route path="settings/:tab" element={<ProjectSettings />} />
+            </Route>
+
+            <Route
+              path="/projects/:slug/deployments/:id"
+              element={<DeploymentPage />}
+            />
+
+            <Route
+              path="*"
+              element={
+                <div className="container">
+                  <div className="empty">
+                    <h2>Page not found</h2>
+                    <NavLink className="btn" to="/">
+                      Back to overview
+                    </NavLink>
+                  </div>
                 </div>
-              </div>
-            }
-          />
-        </Routes>
-      </div>
+              }
+            />
+          </Routes>
+        </div>
+      </ProjectsContext.Provider>
     </AuthContext.Provider>
   );
 }

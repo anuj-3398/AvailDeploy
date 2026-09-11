@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { NavLink, Outlet, useParams } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, type Project } from '../api.ts';
 import { Alert, Spinner } from '../components/ui.tsx';
+import { useProjects } from '../projects.ts';
 
 /** Icons are inline so the shell makes no third-party requests. */
 const icon = {
@@ -48,6 +49,8 @@ export function ProjectLayout({
   onProjectLoaded: (project: Project | null) => void;
 }) {
   const { slug = '' } = useParams();
+  const navigate = useNavigate();
+  const { removeBySlug } = useProjects();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState('');
 
@@ -58,11 +61,20 @@ export function ProjectLayout({
       onProjectLoaded(loaded);
       setError('');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Could not load project');
       setProject(null);
       onProjectLoaded(null);
+
+      // The project is gone — deleted here, or from another tab. Drop it from
+      // the shared list and move on rather than stranding the user on a dead
+      // URL that the switcher still lists.
+      if (err instanceof ApiError && err.status === 404) {
+        removeBySlug(slug);
+        navigate('/', { replace: true });
+        return;
+      }
+      setError(err instanceof ApiError ? err.message : 'Could not load project');
     }
-  }, [slug, onProjectLoaded]);
+  }, [slug, onProjectLoaded, removeBySlug, navigate]);
 
   useEffect(() => {
     setProject(null);

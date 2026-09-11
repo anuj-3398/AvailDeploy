@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, type EnvVarRow, type Project } from '../api.ts';
 import { Alert, CopyField, Spinner, TimeAgo } from '../components/ui.tsx';
+import { useProjects } from '../projects.ts';
 
 type Tab = 'general' | 'build' | 'env' | 'domains' | 'git';
 
@@ -108,9 +109,11 @@ function GeneralTab({
   slug: string;
 }) {
   const navigate = useNavigate();
+  const { remove: removeProject, nextSlugAfter } = useProjects();
   const [name, setName] = useState(project.name);
   const [nodeVersion, setNodeVersion] = useState(project.nodeVersion);
   const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   return (
     <>
@@ -170,12 +173,26 @@ function GeneralTab({
             <>
               <button
                 className="btn danger"
+                disabled={deleting}
                 onClick={async () => {
-                  await api.deleteProject(slug);
-                  navigate('/');
+                  setDeleting(true);
+                  // Work out where to go before the project disappears, then
+                  // drop it from the shared list so the switcher and the `/`
+                  // redirect cannot point at it any more.
+                  const next = nextSlugAfter(project.id);
+                  try {
+                    await api.deleteProject(slug);
+                  } catch (err) {
+                    setDeleting(false);
+                    throw err;
+                  }
+                  removeProject(project.id);
+                  navigate(next ? `/projects/${next}` : '/new', {
+                    replace: true,
+                  });
                 }}
               >
-                Really delete {project.name}
+                {deleting ? 'Deleting…' : `Really delete ${project.name}`}
               </button>
               <button className="btn ghost" onClick={() => setConfirming(false)}>
                 Cancel
