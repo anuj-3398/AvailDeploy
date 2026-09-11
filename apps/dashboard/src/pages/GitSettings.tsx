@@ -164,10 +164,14 @@ export function GitSettings() {
           <button
             className="btn sm"
             onClick={async () => {
-              const result = await api.poll();
-              setNotice(
-                `Checked ${result.checked} repositories, queued ${result.triggered} deployment(s).`
-              );
+              try {
+                const result = await api.poll();
+                setNotice(
+                  `Checked ${result.checked} repositories, queued ${result.triggered} deployment(s).`
+                );
+              } catch (err) {
+                setError(err instanceof ApiError ? err.message : 'Could not poll repositories');
+              }
             }}
           >
             Check repositories now
@@ -182,14 +186,14 @@ export function GitSettings() {
             <dt>Build executor</dt>
             <dd>
               {info?.buildExecutor ?? '—'}
-              {status?.executor
+              {status?.executor && status.executor.ok !== null
                 ? ` · ${status.executor.ok ? 'ok' : 'unavailable'} (${status.executor.detail?.split('\n')[0]})`
                 : ''}
             </dd>
             <dt>Build queue</dt>
             <dd>
-              {status
-                ? `${status.queue.running.length} running, ${status.queue.pending} pending (concurrency ${status.queue.concurrency})`
+              {status?.queue
+                ? `${status.queue.running} running, ${status.queue.pending} pending (concurrency ${status.queue.concurrency})`
                 : '—'}
             </dd>
             <dt>Repository polling</dt>

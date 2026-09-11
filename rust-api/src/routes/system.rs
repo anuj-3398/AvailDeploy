@@ -1,9 +1,11 @@
-//! Mirrors `apps/api/src/routes/system.ts`. `checkExecutor()` /
-//! `queue.status` / `poller.status` need the Phase 2 worker split (see
-//! `docs/rust-api-migration-plan.md`) — `/api/system/status` and
-//! `/api/system/overview` return what is knowable from the database alone
-//! until then, and `/api/system/poll` is a documented stub.
-
+//! Mirrors `apps/api/src/routes/system.ts`. `queue`/`poller` used to be
+//! `null` here pending the Phase 2 worker split — that's done now
+//! (`avail-worker`, see docs/rust-api-migration-plan.md), so `queue` is a
+//! real DB-derived count and `executor` is a real live check. There is
+//! still no cross-process "poller" (repository polling without webhooks)
+//! in `avail-worker`, so `poller` and `/api/system/poll` remain stubs —
+//! and, since that's a legitimate steady state and not just "not wired up
+//! yet", the dashboard must treat every one of these fields as nullable.
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::routing::{get, post};
@@ -11,6 +13,7 @@ use axum::{Json, Router};
 use serde_json::{json, Value};
 
 use crate::auth::AuthUser;
+use crate::builder;
 use crate::db::{deployments, events, projects, users};
 use crate::error::{AppError, AppResult};
 use crate::frameworks;
@@ -51,22 +54,37 @@ async fn frameworks_list(State(state): State<SharedState>) -> Json<Value> {
 }
 
 async fn status(_user: AuthUser, State(state): State<SharedState>) -> AppResult<Json<Value>> {
-    let conn = state.db.lock();
-    let deployment_count: i64 = conn.query_row("SELECT COUNT(*) FROM deployments", [], |row| row.get(0))?;
+    let (deployment_count, project_count, user_count, running, pending) = {
+        let conn = state.db.lock();
+        let deployment_count: i64 = conn.query_row("SELECT COUNT(*) FROM deployments", [], |row| row.get(0))?;
+        let active = deployments::active(&conn)?;
+        let running = active.iter().filter(|d| d.state != "QUEUED").count();
+        let pending = active.iter().filter(|d| d.state == "QUEUED").count();
+        (deployment_count, projects::list(&conn)?.len(), users::count(&conn)?, running, pending)
+    };
+    // No IPC into avail-worker's own semaphore, but it's a real DB-derived
+    // count — not a stub — and matches `isBuilding`'s own approximation in
+    // routes/deployments.rs. `concurrency` is a config fact either way.
+    let (executor_ok, executor_detail) = builder::check_executor(&state.config).await;
+
     Ok(Json(json!({
-        // Phase 2 (docs/rust-api-migration-plan.md): populated once
-        // apps/worker exposes its own status the way it exposes /enqueue.
-        "queue": Value::Null,
+        "queue": {
+            "running": running,
+            "pending": pending,
+            "concurrency": state.config.build.concurrency,
+        },
+        // No cross-process repo-poller in avail-worker (see module doc) —
+        // this really is null, not "not implemented yet".
         "poller": Value::Null,
         "executor": {
             "kind": state.config.build.executor,
             "distro": state.config.build.wsl_distro,
-            "ok": Value::Null,
-            "detail": "not checked — Phase 2 (see docs/rust-api-migration-plan.md)",
+            "ok": executor_ok,
+            "detail": executor_detail,
         },
         "counts": {
-            "projects": projects::list(&conn)?.len(),
-            "users": users::count(&conn)?,
+            "projects": project_count,
+            "users": user_count,
             "deployments": deployment_count,
         },
     })))
