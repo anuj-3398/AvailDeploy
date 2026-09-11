@@ -7,6 +7,7 @@
   "include": [
     "packages/*/src/**/*.ts",
     "apps/api/src/**/*.ts",
+    "apps/worker/src/**/*.ts",
     "apps/builder/src/**/*.ts",
     "apps/proxy/src/**/*.ts",
     "apps/cli/src/**/*.ts",

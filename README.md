@@ -134,6 +134,26 @@ domain joins as a **member**.
 
 Push to a branch and you get a preview; push to `main` and production updates.
 
+### Dashboard layout
+
+The dashboard has two shells that share the same sidebar shape:
+
+- **Workspace home** (`/`, opened by clicking the **Avail Deploy** logo or the
+  project switcher's **All Projects** entry) — **All Projects**, **Deployments**,
+  **Logs**, **Environment Variables**, **Domains** and **Settings**, each
+  showing that resource across *every* project (env vars and domains are
+  read-only here; add or remove them from a project's own Settings tab).
+- **A project's own shell** (`/projects/:slug`, opened from the switcher or a
+  project card) — the same six tabs, scoped to just that one project, with the
+  usual editing (build settings, env vars, domains, git integration).
+
+For the full walkthrough — creating, navigating and deleting projects,
+deployments, environment variables and domains, each with a screen preview —
+open the dashboard's own **Docs** page: click the avatar in the top-right
+corner and choose **Docs**, or go straight to `/docs`. It is built from the
+app's own UI components, so it never drifts out of sync with what you
+actually see.
+
 ### What triggers a deployment
 
 | Event | GitHub repo + webhook | Polling (GitHub or a local path) |
@@ -301,13 +321,77 @@ apps/
   proxy/       host routing, static serving, function + server runtimes
   dashboard/   React SPA
   cli/         avail command line client
+  worker/      standalone build runner for rust-api — see below
 packages/
   shared/      config, types, crypto, ids, logging
   db/          SQLite schema and typed queries (node:sqlite)
   frameworks/  74 framework presets + detection
 scripts/       dev runner, environment doctor
 tests/         unit tests (node:test)
+rust-api/      Rust rewrite of apps/api + apps/builder (avail-api, avail-worker bins) — see below
 ```
+
+### The Rust rewrite of `apps/api`
+
+`rust-api/` is a from-scratch Rust port of the control-plane API — auth
+(email-code sign-in and GitHub/Google OAuth), projects, env vars, domains,
+deployments, webhook intake, and both SSE streams — built alongside the Node
+one rather than replacing it yet. It is outside the npm workspace
+(`packages/*`, `apps/*`) entirely, so it cannot affect `npm install` or any
+script above; nothing under `apps/api` is touched by it.
+
+It reads the *same* `.env` and the *same* SQLite database file as the Node
+API (WAL mode already makes that safe — the proxy writes `request_logs`
+concurrently with the API reading them today), so `cargo run` inside
+`rust-api/` is exercising real data on its own port
+(`RUST_API_PORT`, default `3011`), not a fixture. A build is coordinated the
+same way either side runs it: `rust-api` inserts a `QUEUED` deployment row
+and a separate process picks it up purely by polling the same database, runs
+the real build, and writes the result back — no IPC, just SQLite.
+
+`rust-api` actually ships **two** binaries, both built from the same `cargo
+build` in `rust-api/`:
+
+- `avail-api` — the HTTP API described above.
+- `avail-worker` — a from-scratch Rust port of `@avail/builder` and
+  `@avail/frameworks`'s detection algorithm (`rust-api/src/builder/`), so a
+  build can run with no Node process orchestrating it at all — the only
+  Node.js involved is the *deployed project's own* toolchain inside the WSL
+  sandbox (`npm install`, `next build`), same as it would be for a real
+  deployment target.
+
+**`apps/worker`** (a separate, independent Node app, opt-in via
+`npm run dev -w @avail/worker` — never started by plain `npm run dev`) does
+the same job in Node, and still works; it predates `avail-worker` and is not
+removed by it. Only one build process should run against the database at a
+time. Both have been proven end to end with a real WSL build (`git clone`,
+`npm install`, `next build`, promoted to production, aliases reassigned) —
+`apps/worker` first, then `avail-worker` on its own, with the Node worker
+not even running.
+
+See [`docs/rust-api-migration-plan.md`](docs/rust-api-migration-plan.md) for
+scope, the crate choices, the byte-for-byte parity requirements (encryption
+format, signed cookies, id shape, webhook signatures), the process-boundary
+design, what's still missing (the SMTP mailer port, and `apps/proxy` which is
+still pure Node), and the planned cutover. Nothing here changes today's
+`npm run dev` — that keeps serving the Node API and Node worker exactly as
+before until a deliberate later step.
+
+To run the whole platform on the Rust backend instead, in one command:
+
+```bash
+npm run dev:rust
+```
+
+This builds `avail-api`/`avail-worker` (`cargo build --bins` in `rust-api/`,
+using the GNU toolchain override on Windows — see the plan doc's toolchain
+note), then starts them alongside the same `apps/proxy` and dashboard
+`npm run dev` uses — `scripts/dev-rust.mjs`, a sibling of `scripts/dev.mjs`
+that swaps only the API/build-worker pair. `apps/proxy` reads deployments
+straight from the shared SQLite database, so it works unmodified regardless
+of which backend wrote them. Don't run this alongside plain `npm run dev` or
+`npm run dev -w @avail/worker` — both would collide with the Rust binaries
+on the same port or double-build the same queued deployment.
 
 ## Scripts
 
