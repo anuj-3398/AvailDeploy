@@ -37,12 +37,16 @@ any address on that domain is allowed in.
 | Production deploys | Pushes to the production branch publish to `<project>.avail.localhost` |
 | Preview deploys | Every other branch and every PR gets `<project>-<hash>.avail.localhost` plus a stable `<project>-git-<branch>` alias |
 | Instant rollback | Promote any READY deployment — an alias swap, no rebuild |
-| Serverless functions | `api/*.js|ts` become routed functions with `[param]` and `[...catchAll]` segments, Node and Web handler signatures |
+| Serverless functions | `api/*.js|ts` become routed functions with `[param]` and `[...catchAll]` segments, Node and Web handler signatures — each function gets **its own process**, so one crashing handler can't take a sibling function down with it |
 | SSR frameworks | Next.js, Nuxt, SvelteKit, Remix, Nest… run as supervised server processes, booted on first request and reaped when idle |
 | Environment variables | AES-256-GCM encrypted, scoped to production/preview/development and optionally to one branch |
 | Domains | System domains per deployment/branch/project, plus custom domains |
 | `vercel.json` | `avail.json` (or `vercel.json`) for redirects, rewrites, headers, cleanUrls, functions |
-| Commit status | Build state reported back to GitHub commits; preview URL posted on the PR |
+| Ignored Build Step | An optional per-project command; exit `0` skips the build (deployment lands `SKIPPED`), any other code builds normally |
+| Commit status & PR comments | `pending`→`success`/`failure` status checks on the commit, plus a "Deploy Preview ready" comment on the pull request |
+| Preview comments | A comment thread on each deployment, in the dashboard — anyone signed in can post, only the author can delete their own |
+| Access control | First user to sign in becomes the **owner**; everyone else joins as a **member**. Deleting a project or a custom domain is owner-only |
+| HTTPS | The proxy also terminates TLS on a second port with a self-signed cert for `*.avail.localhost` (local-only — see [Known limits](#known-limits)) |
 | CLI | `avail login / deploy / logs / env / rollback` |
 
 ---
@@ -74,6 +78,7 @@ npm run dev
 | Dashboard | http://localhost:3000 |
 | Control plane API | http://localhost:3001 |
 | Deployment proxy | http://localhost:3002 |
+| Deployment proxy (HTTPS, self-signed) | https://localhost:3443 |
 
 Open the dashboard and sign in with any `@availproject.org` address. Without
 SMTP configured the one-time code is shown directly in the UI and printed to the
@@ -120,7 +125,10 @@ hint, so Workspace users land on their work account instead of an account
 chooser full of personal ones.
 
 The first user to sign in becomes the workspace **owner**; everyone else on the
-domain joins as a **member**.
+domain joins as a **member**. Both can create, build, and edit projects the
+same way — the owner/member split only gates the destructive, hard-to-undo
+actions: deleting a project and removing a custom domain. Everything else
+(env vars, webhooks, redeploys, comments) is unrestricted between the two.
 
 ### Deploy something
 
@@ -147,6 +155,11 @@ The dashboard has two shells that share the same sidebar shape:
   project card) — the same six tabs, scoped to just that one project, with the
   usual editing (build settings, env vars, domains, git integration).
 
+A deployment's own page also has a **Comments** section — a lightweight
+thread for leaving notes on that specific build ("approving this preview",
+"why did this fail"). Anyone signed in can post; only the author can delete
+their own comment.
+
 For the full walkthrough — creating, navigating and deleting projects,
 deployments, environment variables and domains, each with a screen preview —
 open the dashboard's own **Docs** page: click the avatar in the top-right
@@ -163,6 +176,19 @@ actually see.
 | Branch created | immediate, preview | within the poll interval, preview |
 | Pull request opened / updated | immediate, preview + a comment on the PR | picked up as a branch (no PR link) |
 | Branch deleted | ignored | ignored |
+
+Every GitHub-connected build reports back onto the commit as it progresses —
+a `pending` status while building, `success`/`failure` once it finishes —
+and a preview deployment built for a pull request gets a "Deploy Preview
+ready" comment on that PR once it's live. Both use whichever GitHub account
+is connected under **Settings → Git**; a project with no GitHub connection
+(a local path, for instance) still builds, it just has nothing to report to.
+
+A project can also define an **Ignored Build Step** — a shell command run
+right after checkout. If it exits `0` the build stops there and the
+deployment lands `SKIPPED` (no install, no build, nothing published); any
+other exit code builds normally. Useful for a monorepo where most commits
+don't touch a given project — e.g. `git diff --quiet HEAD^ HEAD -- packages/app`.
 
 Polling watches whatever git can see: a GitHub repository through the API, or a
 local directory through `git for-each-ref`. It reads committed refs, so an
@@ -228,15 +254,23 @@ The proxy maps `Host` → alias → deployment on every request:
 | `localhost:3002/_d/<deploymentId>/…` | the same, without wildcard DNS |
 
 `*.localhost` resolves to 127.0.0.1 in every modern browser, so previews work
-with no DNS or hosts-file setup.
+with no DNS or hosts-file setup. The proxy listens on both plain HTTP
+(`:3002`) and HTTPS (`:3443`, `PROXY_HTTPS_PORT`) — the HTTPS cert is a
+self-signed one for `*.avail.localhost`, generated on first boot
+(`~/.avail-deploy/certs/`) and reused after that; browsers will show the
+expected "not trusted" warning for it (see [Known limits](#known-limits)).
 
 From there:
 
 - **Static deployments** are served from disk with ETags, range requests,
   immutable caching for fingerprinted assets, clean URLs, `404.html`, and SPA
   fallback when there is no 404 page.
-- **Serverless functions** are hosted by a per-deployment Node process that
-  loads handlers lazily. Both signatures work:
+- **Serverless functions** get **their own process each** — `acquire`d and
+  booted the first time that specific route is hit, keyed by
+  `<deploymentId>:fn:<route>` rather than by deployment alone, so one
+  function crashing or leaking memory can't take a sibling function in the
+  same deployment down with it (each is reaped independently when idle, and
+  rebooted on its own the next time it's hit). Both handler signatures work:
 
   ```js
   // api/hello.js — Node style
@@ -399,6 +433,7 @@ knowing:
 | `AVAIL_WORKSPACE_DIR` | WSL-native, auto-detected | Where builds run and artifacts live |
 | `BUILD_EXECUTOR` | `wsl` on Windows | `wsl` or `local` |
 | `DEPLOYMENT_DOMAIN` | `avail.localhost` | Wildcard base for deployment URLs |
+| `PROXY_HTTPS_PORT` | `3443` | The proxy's self-signed TLS listener |
 | `BUILD_CONCURRENCY` | `2` | Parallel builds |
 | `GITHUB_POLL_INTERVAL_SECONDS` | `60` | Fallback when webhooks cannot reach this host |
 | `GOOGLE_CLIENT_ID` / `_SECRET` | unset | Enables "Continue with Google" |
@@ -447,9 +482,17 @@ Measured on a real Next.js 16 project (325 MB of dependencies, 10,406 files):
 
 ## Known limits
 
-- One workspace per install — no teams or per-project permissions yet.
+- One workspace per install. Access control is a flat owner/member split,
+  workspace-wide — no teams, and no per-project permissions.
 - Build isolation is process-level, not container-level. Repository build
-  scripts run as the platform user.
-- No edge middleware, image optimization, ISR or analytics.
-- Custom domains are matched on the `Host` header; TLS termination is left to
-  whatever fronts the proxy.
+  scripts run as the platform user. Serverless functions are one process per
+  function (crash-isolated from each other), not one sandboxed invocation
+  per request the way a real Lambda-style platform works.
+- No edge middleware, image optimization, ISR, or analytics/speed insights.
+- Custom domains are matched on the `Host` header. The proxy's own HTTPS
+  listener uses a **self-signed** certificate — real publicly-trusted TLS
+  (ACME/Let's Encrypt) needs a public domain and DNS this install doesn't
+  have; production TLS for a custom domain is left to whatever fronts the
+  proxy.
+- No repository poller in `avail-worker` beyond webhooks — `/api/system/poll`
+  and the "Check repositories now" button are documented stubs (`501`).

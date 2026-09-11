@@ -15,7 +15,7 @@ export function Docs() {
           <span className="sub">
             Where every screen lives, and the steps for the flows you'll use
             most — creating, navigating and deleting projects, deployments,
-            environment variables and domains.
+            environment variables and domains, plus who's allowed to do what.
           </span>
         </div>
       </div>
@@ -109,6 +109,31 @@ export function Docs() {
         </section>
 
         <section className="docs-section">
+          <h2>Access control</h2>
+          <p className="sub">
+            The first person to sign in becomes the workspace's{' '}
+            <strong>owner</strong>; everyone else who signs in afterward
+            joins as a <strong>member</strong>. There's no invite step and no
+            separate roles to assign — it's decided automatically by who
+            got there first.
+          </p>
+          <p className="sub">
+            Owner and member can do almost everything the same way: create
+            projects, deploy, edit environment variables, manage domains and
+            webhooks, comment on deployments. The split only matters for two
+            actions that can't be undone —{' '}
+            <strong>deleting a project</strong> and{' '}
+            <strong>removing a custom domain</strong> — both owner-only. A
+            member who tries either gets a plain "Only the workspace owner
+            can do this" response rather than a partially-completed action.
+          </p>
+
+          <Frame url="avail.localhost/projects/my-app/settings">
+            <RoleMockup />
+          </Frame>
+        </section>
+
+        <section className="docs-section">
           <h2>How deployments work</h2>
           <table className="data">
             <thead>
@@ -135,12 +160,28 @@ export function Docs() {
                 <td>Instant Rollback, or Promote on a READY deployment</td>
                 <td>Production swaps to that build instantly — no rebuild.</td>
               </tr>
+              <tr>
+                <td>Project has an Ignored Build Step, and it exits <code>0</code></td>
+                <td>
+                  The build stops right after checkout — nothing installs or
+                  builds. The deployment lands <strong>Skipped</strong>.
+                </td>
+              </tr>
+              <tr>
+                <td>Build finishes (GitHub-connected project)</td>
+                <td>
+                  The commit gets a status check (building → ready/failed),
+                  and a pull-request build also gets a "Deploy Preview ready"
+                  comment on that PR.
+                </td>
+              </tr>
             </tbody>
           </table>
           <p className="sub" style={{ marginTop: 12 }}>
             A running build can be canceled, and an old deployment removed,
             from its own page or the project's <strong>Deployments</strong>{' '}
-            tab.
+            tab. That page also has a <strong>Comments</strong> thread for
+            leaving notes on that specific build — see below.
           </p>
         </section>
 
@@ -172,11 +213,30 @@ export function Docs() {
             Open the project, go to <strong>Settings</strong> → General, and
             use <strong>Delete project</strong> at the bottom. It removes the
             project, every deployment and all build artifacts —{' '}
-            <strong>this cannot be undone</strong>.
+            <strong>this cannot be undone</strong>. Only the workspace{' '}
+            <strong>owner</strong> can do this — see{' '}
+            <strong>Access control</strong> above; a member sees the same
+            button but the request is refused. Removing a custom domain from
+            a project's <strong>Domains</strong> tab is owner-only the same
+            way.
           </p>
 
           <Frame url="avail.localhost/projects/my-app/settings">
             <DangerZoneMockup />
+          </Frame>
+        </section>
+
+        <section className="docs-section">
+          <h2>Preview comments</h2>
+          <p className="sub">
+            Every deployment's own page has a comment thread underneath the
+            build log — a place to leave a note ("approving this preview",
+            "why did this fail") without leaving the dashboard. Anyone
+            signed in can post; you can only delete your own.
+          </p>
+
+          <Frame url="avail.localhost/projects/my-app/deployments/dpl_…">
+            <CommentsMockup />
           </Frame>
         </section>
 
@@ -361,9 +421,75 @@ function DangerZoneMockup() {
       <div className="card-body muted small">
         Removes the project, its deployments and all build artifacts. This
         cannot be undone.
+        <br />
+        <span className="faint">Owner only.</span>
       </div>
       <div className="card-foot">
         <span className="btn danger">Delete project</span>
+      </div>
+    </div>
+  );
+}
+
+function RoleMockup() {
+  return (
+    <div className="list">
+      <div className="list-item">
+        <span className="avatar tiny" aria-hidden>
+          A
+        </span>
+        <div className="stack" style={{ flex: 1 }}>
+          <strong>anuj@availproject.org</strong>
+          <span className="small faint">Signed in first</span>
+        </div>
+        <span className="btn sm">owner</span>
+      </div>
+      <div className="list-item">
+        <span className="avatar tiny" aria-hidden>
+          T
+        </span>
+        <div className="stack" style={{ flex: 1 }}>
+          <strong>teammate@availproject.org</strong>
+          <span className="small faint">Signed in afterward</span>
+        </div>
+        <span className="btn sm ghost">member</span>
+      </div>
+    </div>
+  );
+}
+
+function CommentsMockup() {
+  return (
+    <div className="stack" style={{ gap: 14 }}>
+      <div className="comment">
+        <span className="avatar tiny" aria-hidden>
+          A
+        </span>
+        <div className="comment-body">
+          <div className="comment-head">
+            <strong>anuj</strong>
+            <span className="small faint">2 minutes ago</span>
+          </div>
+          <p>Looks good — approving this preview.</p>
+        </div>
+      </div>
+      <div className="comment">
+        <span className="avatar tiny" aria-hidden>
+          T
+        </span>
+        <div className="comment-body">
+          <div className="comment-head">
+            <strong>teammate</strong>
+            <span className="small faint">just now</span>
+          </div>
+          <p>Nice, the pricing page loads fast now.</p>
+        </div>
+      </div>
+      <div className="comment-form">
+        <span className="textarea faint" style={{ flex: 1 }}>
+          Leave a comment on this deployment…
+        </span>
+        <span className="btn">Comment</span>
       </div>
     </div>
   );
