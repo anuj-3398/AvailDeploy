@@ -22,6 +22,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::auth::{resolve_user, AuthUser};
+use crate::builder;
 use crate::db::types::Deployment;
 use crate::db::{build_logs, comments, deployments, projects, request_logs, users};
 use crate::error::{AppError, AppResult};
@@ -353,16 +354,20 @@ async fn redeploy(user: AuthUser, State(state): State<SharedState>, Path(id): Pa
 }
 
 async fn delete_deployment(_user: AuthUser, State(state): State<SharedState>, Path(id): Path<String>) -> AppResult<Json<Value>> {
-    let conn = state.db.lock();
-    let deployment = require_deployment(&conn, &id)?;
-    if deployment.is_current_production != 0 {
-        return Err(AppError::bad_request("is_production", "Cannot delete the current production deployment"));
+    {
+        let conn = state.db.lock();
+        let deployment = require_deployment(&conn, &id)?;
+        if deployment.is_current_production != 0 {
+            return Err(AppError::bad_request("is_production", "Cannot delete the current production deployment"));
+        }
+        if deployment.state == "QUEUED" {
+            deployments::update(&conn, &deployment.id, &[("state", SqlValue::Text("CANCELED".to_string()))])?;
+        }
+        deployments::delete(&conn, &deployment.id)?;
     }
-    if deployment.state == "QUEUED" {
-        deployments::update(&conn, &deployment.id, &[("state", SqlValue::Text("CANCELED".to_string()))])?;
-    }
-    let _ = std::fs::remove_dir_all(state.config.deployments_dir.join(&deployment.id));
-    deployments::delete(&conn, &deployment.id)?;
+    // See builder::spawn_deployment_cleanup — disk cleanup happens off the
+    // request thread and without the DB lock held, since it can be slow.
+    builder::spawn_deployment_cleanup(state.config.deployments_dir.clone(), vec![id]);
     Ok(Json(json!({ "ok": true })))
 }
 

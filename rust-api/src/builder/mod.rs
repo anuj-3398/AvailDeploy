@@ -479,10 +479,31 @@ pub async fn run_build(cfg: &Config, input: BuildInput) -> Result<BuildOutcome, 
     }))
 }
 
-/// Removes a deployment's directory from disk.
+/// Removes a deployment's directory from disk. Blocking — see
+/// `spawn_deployment_cleanup` for why callers holding the DB lock or
+/// running on an async worker thread should not call this directly.
 pub fn remove_deployment_dir(cfg: &Config, deployment_id: &str) {
     let paths = deployment_paths(cfg, deployment_id);
     let _ = std::fs::remove_dir_all(&paths.dir);
+}
+
+/// Deletes each deployment's directory in the background, off the calling
+/// task and without any lock held. `remove_dir_all` is a blocking syscall
+/// that can take a long time over a WSL UNC path (`\\wsl.localhost\...`) on
+/// a `node_modules`-heavy snapshot — directly measured at 2+ minutes for
+/// one deployment during testing. Doing this synchronously while holding
+/// `state.db.lock()` blocks *every other request in the whole app* for
+/// that entire time, since the DB is one process-wide mutex every
+/// handler — including the SSE polling loops — needs to touch.
+/// `spawn_blocking` per directory keeps it off the async worker threads
+/// too, so a slow delete can't even starve unrelated tasks.
+pub fn spawn_deployment_cleanup(deployments_dir: std::path::PathBuf, deployment_ids: Vec<String>) {
+    tokio::spawn(async move {
+        for id in deployment_ids {
+            let dir = deployments_dir.join(&id);
+            let _ = tokio::task::spawn_blocking(move || std::fs::remove_dir_all(&dir)).await;
+        }
+    });
 }
 
 /// Verifies the configured executor can run commands at all.

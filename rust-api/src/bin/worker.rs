@@ -436,16 +436,37 @@ impl Worker {
     }
 
     /// Frees disk by dropping build artifacts of superseded deployments.
+    /// Same reasoning as `builder::spawn_deployment_cleanup`: the actual
+    /// disk removal is slow (WSL UNC paths, large `node_modules`
+    /// snapshots) and used to run synchronously while holding `self.db`'s
+    /// lock — which, unlike avail-api's, only blocks this one process, but
+    /// still meant one slow cleanup could stall `tick()` from picking up
+    /// the next queued build for however long the removal took.
     fn cleanup_old_deployments(&self, project: &avail_api::db::types::Project) {
-        let conn = self.db.lock();
-        let stale = deployments::stale_for_project(&conn, &project.id, self.config.build.keep_per_project).unwrap_or_default();
-        for d in stale {
-            if d.output_path.is_none() {
-                continue;
-            }
-            builder::remove_deployment_dir(&self.config, &d.id);
-            let _ = deployments::update(&conn, &d.id, &[("output_path", rusqlite::types::Value::Null)]);
+        let stale_ids: Vec<String> = {
+            let conn = self.db.lock();
+            deployments::stale_for_project(&conn, &project.id, self.config.build.keep_per_project)
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|d| d.output_path.is_some())
+                .map(|d| d.id)
+                .collect()
+        };
+        if stale_ids.is_empty() {
+            return;
         }
+        let deployments_dir = self.config.deployments_dir.clone();
+        let db = self.db.clone();
+        tokio::spawn(async move {
+            for id in &stale_ids {
+                let dir = deployments_dir.join(id);
+                let _ = tokio::task::spawn_blocking(move || std::fs::remove_dir_all(&dir)).await;
+            }
+            let conn = db.lock();
+            for id in &stale_ids {
+                let _ = deployments::update(&conn, id, &[("output_path", rusqlite::types::Value::Null)]);
+            }
+        });
     }
 
     /// Recovers deployments that were mid-flight when this process last

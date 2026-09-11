@@ -70,8 +70,16 @@ pub struct BranchHead {
     pub url: String,
 }
 
+/// No timeout here means a hung TCP connection to GitHub (which does
+/// happen — e.g. mid-flight when the OAuth App it's calling gets deleted)
+/// blocks whatever request is awaiting it forever, with nothing to show
+/// for it in the logs. 20s comfortably covers a slow real response.
 fn client() -> reqwest::Client {
-    reqwest::Client::builder().user_agent("avail-deploy").build().expect("build reqwest client")
+    reqwest::Client::builder()
+        .user_agent("avail-deploy")
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .expect("build reqwest client")
 }
 
 async fn request(

@@ -88,7 +88,9 @@ pub async fn exchange_code(cfg: &Config, code: &str, redirect_uri: &str) -> Resu
     let client_id = cfg.google.client_id.clone().unwrap();
     let client_secret = cfg.google.client_secret.clone().unwrap();
 
-    let client = reqwest::Client::new();
+    // See github.rs's client() for why this needs an explicit timeout:
+    // a hung connection to Google otherwise blocks this request forever.
+    let client = reqwest::Client::builder().timeout(std::time::Duration::from_secs(20)).build().map_err(|e| GoogleError(e.to_string()))?;
     let form = [
         ("code", code),
         ("client_id", client_id.as_str()),
