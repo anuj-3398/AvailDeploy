@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { api, ApiError, type Deployment, type Project } from '../api.ts';
-import { Alert, Duration, StatusBadge, TimeAgo } from '../components/ui.tsx';
+import { Alert, Duration, Spinner, StatusBadge, TimeAgo } from '../components/ui.tsx';
 
 interface Context {
   project: Project;
   reload: () => Promise<void>;
 }
+
+const ACTIVE_STATES = ['QUEUED', 'INITIALIZING', 'BUILDING', 'UPLOADING'];
 
 /** Short author label from a `Name <email>` commit author string. */
 function authorName(author: string | null): string {
@@ -33,6 +35,13 @@ export function ProjectOverview() {
   const [rollbackTarget, setRollbackTarget] = useState<Deployment | null>(null);
 
   const production = project.productionDeployment;
+  // A build already in flight for this project — shown instead of the
+  // "no production deployment yet" CTA so it can't be clicked twice into a
+  // duplicate deploy while the first one is still queued or building.
+  const activeDeployment =
+    !production && project.latestDeployment && ACTIVE_STATES.includes(project.latestDeployment.state)
+      ? project.latestDeployment
+      : null;
 
   /** The newest READY deployment that is not the one already live. */
   const findRollbackTarget = useCallback(async () => {
@@ -189,6 +198,18 @@ export function ProjectOverview() {
                 </span>
               </dd>
 
+              {project.createdBy ? (
+                <>
+                  <dt>Imported by</dt>
+                  <dd>
+                    {project.createdBy.name ?? project.createdBy.email}
+                    <span className="avatar tiny" aria-hidden>
+                      {initials(project.createdBy.name ?? project.createdBy.email)}
+                    </span>
+                  </dd>
+                </>
+              ) : null}
+
               <dt>Source</dt>
               <dd className="hero-source">
                 <div>
@@ -203,6 +224,26 @@ export function ProjectOverview() {
                 ) : null}
               </dd>
             </dl>
+          </div>
+        ) : activeDeployment ? (
+          <div className="panel-body">
+            <div className="empty">
+              <Spinner />
+              <h2 style={{ marginTop: 12 }}>
+                <StatusBadge state={activeDeployment.state} /> Deploying{' '}
+                {activeDeployment.branch ?? project.productionBranch}…
+              </h2>
+              <p className="small">
+                {activeDeployment.commit?.message ?? 'Building the first production deployment.'}
+              </p>
+              <Link
+                className="btn"
+                style={{ marginTop: 16 }}
+                to={`/projects/${project.slug}/deployments/${activeDeployment.id}`}
+              >
+                View build log
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="panel-body">

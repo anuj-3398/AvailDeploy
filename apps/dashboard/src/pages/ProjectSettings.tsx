@@ -114,9 +114,12 @@ function GeneralTab({
   const [nodeVersion, setNodeVersion] = useState(project.nodeVersion);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   return (
     <>
+      <Alert kind="error">{deleteError}</Alert>
+
       <div className="card">
         <div className="card-head">
           <h2>Project name</h2>
@@ -176,6 +179,7 @@ function GeneralTab({
                 disabled={deleting}
                 onClick={async () => {
                   setDeleting(true);
+                  setDeleteError('');
                   // Work out where to go before the project disappears, then
                   // drop it from the shared list so the switcher and the `/`
                   // redirect cannot point at it any more.
@@ -184,7 +188,11 @@ function GeneralTab({
                     await api.deleteProject(slug);
                   } catch (err) {
                     setDeleting(false);
-                    throw err;
+                    setConfirming(false);
+                    setDeleteError(
+                      err instanceof ApiError ? err.message : 'Could not delete this project'
+                    );
+                    return;
                   }
                   removeProject(project.id);
                   navigate(next ? `/projects/${next}` : '/new', {
@@ -566,8 +574,15 @@ function DomainsTab({ slug }: { slug: string }) {
                     <button
                       className="btn sm ghost"
                       onClick={async () => {
-                        await api.removeDomain(slug, row.domain);
-                        await load();
+                        setError('');
+                        try {
+                          await api.removeDomain(slug, row.domain);
+                          await load();
+                        } catch (err) {
+                          setError(
+                            err instanceof ApiError ? err.message : 'Could not remove this domain'
+                          );
+                        }
                       }}
                     >
                       Remove

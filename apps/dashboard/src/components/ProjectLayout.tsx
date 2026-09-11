@@ -56,15 +56,18 @@ export function ProjectLayout({
     void reload();
   }, [reload]);
 
-  // Deployment activity changes what Overview shows, so refresh on it.
+  // Deployment activity changes what Overview shows — a build starting is
+  // exactly when it needs to switch away from "no production deployment
+  // yet" to an in-progress view, not just when one finishes — so refresh on
+  // every state this project's deployments pass through, not only the
+  // terminal ones.
   useEffect(() => {
     const source = new EventSource('/api/events');
     source.addEventListener('deployment', (event) => {
       const updated = JSON.parse((event as MessageEvent).data) as {
         projectSlug: string | null;
-        state: string;
       };
-      if (updated.projectSlug === slug && ['READY', 'ERROR', 'CANCELED'].includes(updated.state)) {
+      if (updated.projectSlug === slug) {
         void reload();
       }
     });
