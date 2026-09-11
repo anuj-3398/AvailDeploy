@@ -1,0 +1,12 @@
+{
+  "name": "@avail/builder",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "dependencies": {
+    "@avail/db": "*",
+    "@avail/frameworks": "*",
+    "@avail/shared": "*"
+  }
+}

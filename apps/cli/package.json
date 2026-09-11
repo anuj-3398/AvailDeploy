@@ -1,0 +1,10 @@
+{
+  "name": "@avail/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": { "avail": "./src/cli.ts" },
+  "dependencies": {
+    "@avail/shared": "*"
+  }
+}

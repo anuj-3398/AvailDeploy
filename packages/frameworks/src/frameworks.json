@@ -1,0 +1,3396 @@
+[
+  {
+    "name": "Container",
+    "slug": "container",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/container.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/container",
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "path": "Dockerfile.vercel"
+        },
+        {
+          "path": "Containerfile.vercel"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": null
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": true
+  },
+  {
+    "name": "Blitz.js (Legacy)",
+    "slug": "blitzjs",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/blitz.svg",
+    "envPrefix": "NEXT_PUBLIC_",
+    "useRuntime": "@vercel/next",
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "path": "blitz.config.js"
+        },
+        {
+          "path": "blitz.config.ts"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "blitz build",
+      "devCommand": "blitz start",
+      "outputDirectory": null
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Next.js",
+    "slug": "nextjs",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/next.svg",
+    "envPrefix": "NEXT_PUBLIC_",
+    "useRuntime": "@vercel/next",
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "next"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "next build",
+      "devCommand": "next dev --port $PORT",
+      "outputDirectory": null
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": ".next/cache/**",
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Gatsby.js",
+    "slug": "gatsby",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/gatsby.svg",
+    "envPrefix": "GATSBY_",
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "gatsby"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "gatsby build",
+      "devCommand": "gatsby develop --port $PORT",
+      "outputDirectory": "public"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": "{.cache,public}/**",
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Remix",
+    "slug": "remix",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/remix-no-shadow.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/remix-builder",
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "matchPackage": "@remix-run/dev"
+        },
+        {
+          "path": "remix.config.js"
+        },
+        {
+          "path": "remix.config.mjs"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "remix build",
+      "devCommand": "remix dev",
+      "outputDirectory": "public"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/node"
+    ],
+    "cachePattern": null,
+    "supersedes": [
+      "hydrogen",
+      "vite",
+      "node"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "React Router",
+    "slug": "react-router",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/react-router.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/remix-builder",
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "path": "vite.config.js",
+          "matchContent": "@react-router/dev/vite"
+        },
+        {
+          "path": "vite.config.ts",
+          "matchContent": "@react-router/dev/vite"
+        },
+        {
+          "path": "react-router.config.js"
+        },
+        {
+          "path": "react-router.config.ts"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "react-router build",
+      "devCommand": "react-router dev",
+      "outputDirectory": "build"
+    },
+    "defaultOutputDirName": "build",
+    "ignoreRuntimes": [
+      "@vercel/node"
+    ],
+    "cachePattern": null,
+    "supersedes": [
+      "hydrogen",
+      "vite",
+      "node"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Astro",
+    "slug": "astro",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/astro.svg",
+    "envPrefix": "PUBLIC_",
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "astro"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "astro build",
+      "devCommand": "astro dev --port $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Hexo",
+    "slug": "hexo",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/hexo.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "hexo"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "hexo generate",
+      "devCommand": "hexo server --port $PORT",
+      "outputDirectory": "public"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Eleventy",
+    "slug": "eleventy",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/eleventy.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "@11ty/eleventy"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "npx @11ty/eleventy",
+      "devCommand": "npx @11ty/eleventy --serve --watch --port $PORT",
+      "outputDirectory": "_site"
+    },
+    "defaultOutputDirName": "_site",
+    "ignoreRuntimes": null,
+    "cachePattern": ".cache/**",
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Docusaurus (v2+)",
+    "slug": "docusaurus-2",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/docusaurus.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "matchPackage": "@docusaurus/core"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "docusaurus build",
+      "devCommand": "docusaurus start --port $PORT",
+      "outputDirectory": "build"
+    },
+    "defaultOutputDirName": "build",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Docusaurus (v1)",
+    "slug": "docusaurus",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/docusaurus.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "matchPackage": "docusaurus"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "docusaurus-build",
+      "devCommand": "docusaurus-start --port $PORT",
+      "outputDirectory": "build"
+    },
+    "defaultOutputDirName": "build",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Preact",
+    "slug": "preact",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/preact.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "preact-cli"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "preact build",
+      "devCommand": "preact watch --port $PORT",
+      "outputDirectory": "build"
+    },
+    "defaultOutputDirName": "build",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "SolidStart (v1)",
+    "slug": "solidstart-1",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/solid.svg",
+    "envPrefix": "VITE_",
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "solid-js"
+        },
+        {
+          "matchPackage": "@solidjs/start"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "vinxi build",
+      "devCommand": "vinxi dev",
+      "outputDirectory": ".output"
+    },
+    "defaultOutputDirName": ".output",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "SolidStart (v0)",
+    "slug": "solidstart",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/solid.svg",
+    "envPrefix": "VITE_",
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "solid-js"
+        },
+        {
+          "matchPackage": "solid-start"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "solid-start build",
+      "devCommand": "solid-start dev",
+      "outputDirectory": ".output"
+    },
+    "defaultOutputDirName": ".output",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Dojo",
+    "slug": "dojo",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/dojo.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "matchPackage": "@dojo/framework"
+        },
+        {
+          "path": ".dojorc"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "dojo build",
+      "devCommand": "dojo build -m dev -w -s -p $PORT",
+      "outputDirectory": "output/dist"
+    },
+    "defaultOutputDirName": "output\\dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Ember.js",
+    "slug": "ember",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/ember.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "matchPackage": "ember-source"
+        },
+        {
+          "matchPackage": "ember-cli"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "ember build",
+      "devCommand": "ember serve --port $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Vue.js",
+    "slug": "vue",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/vue.svg",
+    "envPrefix": "VUE_APP_",
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "@vue/cli-service"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "vue-cli-service build",
+      "devCommand": "vue-cli-service serve --port $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Scully",
+    "slug": "scully",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/scullyio-logo.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "@scullyio/init"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "ng build && scully",
+      "devCommand": "ng serve --port $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist/static",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Ionic Angular",
+    "slug": "ionic-angular",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/ionic.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "@ionic/angular"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "ng build",
+      "devCommand": "ng serve --port $PORT",
+      "outputDirectory": "www"
+    },
+    "defaultOutputDirName": "www",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Angular",
+    "slug": "angular",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/angular.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "@angular/cli"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "ng build",
+      "devCommand": "ng serve --port $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Polymer",
+    "slug": "polymer",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/polymer.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "polymer-cli"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "polymer build",
+      "devCommand": "polymer serve --port $PORT",
+      "outputDirectory": "build"
+    },
+    "defaultOutputDirName": "build",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Svelte",
+    "slug": "svelte",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/svelte.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "svelte"
+        },
+        {
+          "matchPackage": "sirv-cli"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "rollup -c",
+      "devCommand": "rollup -c -w",
+      "outputDirectory": "public"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "SvelteKit (v0)",
+    "slug": "sveltekit",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/svelte.svg",
+    "envPrefix": "VITE_",
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "path": "package.json",
+          "matchContent": "\"(dev)?(d|D)ependencies\":\\s*{[^}]*\"@sveltejs\\/kit\":\\s*\"1\\.0\\.0-next\\.(\\d+)\"[^}]*}"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "svelte-kit build",
+      "devCommand": "svelte-kit dev --port $PORT",
+      "outputDirectory": "public"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "vite"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "SvelteKit",
+    "slug": "sveltekit-1",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/svelte.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "path": "package.json",
+          "matchContent": "\"(dev)?(d|D)ependencies\":\\s*{[^}]*\"@sveltejs\\/kit\":\\s*\".+?\"[^}]*}"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "vite build",
+      "devCommand": "vite dev --port $PORT",
+      "outputDirectory": "public"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "vite"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Ionic React",
+    "slug": "ionic-react",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/ionic.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "@ionic/react"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "react-scripts build",
+      "devCommand": "react-scripts start",
+      "outputDirectory": "build"
+    },
+    "defaultOutputDirName": "build",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Create React App",
+    "slug": "create-react-app",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/react.svg",
+    "envPrefix": "REACT_APP_",
+    "useRuntime": null,
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "matchPackage": "react-scripts"
+        },
+        {
+          "matchPackage": "react-dev-utils"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "react-scripts build",
+      "devCommand": "react-scripts start",
+      "outputDirectory": "build"
+    },
+    "defaultOutputDirName": "build",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Gridsome",
+    "slug": "gridsome",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/gridsome.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "gridsome"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "gridsome build",
+      "devCommand": "gridsome develop -p $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "UmiJS",
+    "slug": "umijs",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/umi.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "umi"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "umi build",
+      "devCommand": "umi dev --port $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Sapper",
+    "slug": "sapper",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/svelte.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "sapper"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "sapper export",
+      "devCommand": "sapper dev --port $PORT",
+      "outputDirectory": "__sapper__/export"
+    },
+    "defaultOutputDirName": "__sapper__/export",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Saber",
+    "slug": "saber",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/saber.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "saber"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "saber build",
+      "devCommand": "saber --port $PORT",
+      "outputDirectory": "public"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Stencil",
+    "slug": "stencil",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/stencil.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "@stencil/core"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "stencil build",
+      "devCommand": "stencil build --dev --watch --serve --port $PORT",
+      "outputDirectory": "www"
+    },
+    "defaultOutputDirName": "www",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Nuxt",
+    "slug": "nuxtjs",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/nuxt.svg",
+    "envPrefix": "NUXT_ENV_",
+    "useRuntime": null,
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "matchPackage": "nuxt"
+        },
+        {
+          "matchPackage": "nuxt3"
+        },
+        {
+          "matchPackage": "nuxt-edge"
+        },
+        {
+          "matchPackage": "nuxt-nightly"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "nuxt build",
+      "devCommand": "nuxt dev",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": ".nuxt/**",
+    "supersedes": [
+      "nitro"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "RedwoodJS",
+    "slug": "redwoodjs",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/redwoodjs.svg",
+    "envPrefix": "REDWOOD_ENV_",
+    "useRuntime": "@vercel/redwood",
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "@redwoodjs/core"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "yarn rw deploy vercel",
+      "devCommand": "yarn rw dev --fwd=\"--port=$PORT --open=false\"",
+      "outputDirectory": null
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/node"
+    ],
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Hugo",
+    "slug": "hugo",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/hugo.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "path": "config.yaml",
+          "matchContent": "baseURL"
+        },
+        {
+          "path": "config.toml",
+          "matchContent": "baseURL"
+        },
+        {
+          "path": "config.json",
+          "matchContent": "baseURL"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "hugo --gc",
+      "devCommand": "hugo server -D -w -p $PORT",
+      "outputDirectory": null
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Jekyll",
+    "slug": "jekyll",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/jekyll.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "path": "_config.yml"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": "bundle install",
+      "buildCommand": "jekyll build",
+      "devCommand": "bundle exec jekyll serve --watch --port $PORT",
+      "outputDirectory": null
+    },
+    "defaultOutputDirName": "_site",
+    "ignoreRuntimes": null,
+    "cachePattern": "{vendor/bin,vendor/cache,vendor/bundle}/**",
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Brunch",
+    "slug": "brunch",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/brunch.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "matchPackage": "brunch"
+        },
+        {
+          "path": "brunch-config.js"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "brunch build --production",
+      "devCommand": "brunch watch --server --port $PORT",
+      "outputDirectory": "public"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Middleman",
+    "slug": "middleman",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/middleman.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "path": "config.rb"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": "bundle install",
+      "buildCommand": "bundle exec middleman build",
+      "devCommand": "bundle exec middleman server -p $PORT",
+      "outputDirectory": "build"
+    },
+    "defaultOutputDirName": "build",
+    "ignoreRuntimes": null,
+    "cachePattern": "{vendor/bin,vendor/cache,vendor/bundle}/**",
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Zola",
+    "slug": "zola",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/zola.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "path": "config.toml",
+          "matchContent": "base_url"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "zola build",
+      "devCommand": "zola serve --port $PORT",
+      "outputDirectory": "public"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Hydrogen (v1)",
+    "slug": "hydrogen",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/hydrogen.svg",
+    "envPrefix": "PUBLIC_",
+    "useRuntime": "@vercel/hydrogen",
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "matchPackage": "@shopify/hydrogen"
+        },
+        {
+          "path": "hydrogen.config.js"
+        },
+        {
+          "path": "hydrogen.config.ts"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "shopify hydrogen build",
+      "devCommand": "shopify hydrogen dev",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "vite"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Vite",
+    "slug": "vite",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/vite.svg",
+    "envPrefix": "VITE_",
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "vite"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "vite build",
+      "devCommand": "vite --port $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "ionic-react"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "TanStack Start",
+    "slug": "tanstack-start",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/tanstack-start.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "@tanstack/router-plugin"
+        }
+      ],
+      "some": [
+        {
+          "matchPackage": "@tanstack/react-start"
+        },
+        {
+          "matchPackage": "@tanstack/solid-start"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "vite build",
+      "devCommand": "vite --port $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "ionic-react",
+      "vite"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "TanStack Start",
+    "slug": "tanstack-start-lovable",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/tanstack-start.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "@lovable.dev/vite-tanstack-config"
+        }
+      ],
+      "some": [
+        {
+          "matchPackage": "@tanstack/react-start"
+        },
+        {
+          "matchPackage": "@tanstack/solid-start"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "vite build",
+      "devCommand": "vite --port $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "tanstack-start",
+      "ionic-react",
+      "vite"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "VitePress",
+    "slug": "vitepress",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/vite.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "vitepress"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "vitepress build docs",
+      "devCommand": "vitepress dev docs --port $PORT",
+      "outputDirectory": "docs/.vitepress/dist"
+    },
+    "defaultOutputDirName": "docs/.vitepress/dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "VuePress",
+    "slug": "vuepress",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/vuepress.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "vuepress"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "vuepress build src",
+      "devCommand": "vuepress dev src --port $PORT",
+      "outputDirectory": "src/.vuepress/dist"
+    },
+    "defaultOutputDirName": "src/.vuepress/dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Parcel",
+    "slug": "parcel",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/parcel.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "parcel"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "parcel build",
+      "devCommand": "parcel",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "FastAPI",
+    "slug": "fastapi",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/fastapi.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/python",
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "path": "requirements.txt",
+          "matchContent": "fastapi"
+        },
+        {
+          "path": "pyproject.toml",
+          "matchContent": "fastapi"
+        },
+        {
+          "path": "Pipfile",
+          "matchContent": "fastapi"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/python"
+    ],
+    "cachePattern": null,
+    "supersedes": [
+      "python"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Flask",
+    "slug": "flask",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/flask.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/python",
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "path": "requirements.txt",
+          "matchContent": "[Ff]lask"
+        },
+        {
+          "path": "pyproject.toml",
+          "matchContent": "[Ff]lask"
+        },
+        {
+          "path": "Pipfile",
+          "matchContent": "[Ff]lask"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/python"
+    ],
+    "cachePattern": null,
+    "supersedes": [
+      "python"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "FastHTML",
+    "slug": "fasthtml",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/fasthtml.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/python",
+    "detectors": {
+      "every": [
+        {
+          "path": "requirements.txt",
+          "matchContent": "python-fasthtml"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": "uvicorn main:app --reload",
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "python"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Django",
+    "slug": "django",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/django.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/python",
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "path": "requirements.txt",
+          "matchContent": "[Dd]jango"
+        },
+        {
+          "path": "pyproject.toml",
+          "matchContent": "[Dd]jango"
+        },
+        {
+          "path": "Pipfile",
+          "matchContent": "[Dd]jango"
+        },
+        {
+          "path": "manage.py",
+          "matchContent": "DJANGO_SETTINGS_MODULE"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/python"
+    ],
+    "cachePattern": null,
+    "supersedes": [
+      "python"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Ash",
+    "slug": "ash",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/ash.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "path": "package.json",
+          "matchContent": "\"(dev)?(d|D)ependencies\":\\s*{[^}]*\"experimental-ash\":\\s*\".+?\"[^}]*}"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "ash build",
+      "devCommand": "ash dev",
+      "outputDirectory": ".output"
+    },
+    "defaultOutputDirName": ".output",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": true,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Factory (Eve)",
+    "slug": "factory-eve",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/eve.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "eve"
+        },
+        {
+          "matchPackage": "@vercel/factory"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "eve build",
+      "devCommand": "eve dev",
+      "outputDirectory": ".output"
+    },
+    "defaultOutputDirName": ".output",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "eve"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "eve",
+    "slug": "eve",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/eve.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "path": "package.json",
+          "matchContent": "\"(dev)?(d|D)ependencies\":\\s*{[^}]*\"eve\":\\s*\".+?\"[^}]*}"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "eve build",
+      "devCommand": "eve dev",
+      "outputDirectory": ".output"
+    },
+    "defaultOutputDirName": ".output",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Sanity",
+    "slug": "sanity",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/sanity.svg",
+    "envPrefix": "SANITY_STUDIO_",
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "sanity"
+        }
+      ],
+      "some": [
+        {
+          "path": "sanity.config.js"
+        },
+        {
+          "path": "sanity.config.jsx"
+        },
+        {
+          "path": "sanity.config.ts"
+        },
+        {
+          "path": "sanity.config.tsx"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "sanity build",
+      "devCommand": "sanity dev --port $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Sanity (v2 - legacy)",
+    "slug": "sanity-v2",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/sanity-v2.svg",
+    "envPrefix": "SANITY_STUDIO_",
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "path": "package.json",
+          "matchContent": "\"(dev)?(d|D)ependencies\":\\s*{[^}]*\"@sanity/cli\":\\s*\"\\^?2\\..*\"[^}]*}"
+        }
+      ],
+      "some": [
+        {
+          "path": "sanity.json"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "sanity build",
+      "devCommand": "sanity start --port $PORT",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Storybook",
+    "slug": "storybook",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/storybook.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "storybook"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "storybook build",
+      "devCommand": "storybook dev -p $PORT",
+      "outputDirectory": "storybook-static"
+    },
+    "defaultOutputDirName": "storybook-static",
+    "ignoreRuntimes": [
+      "@vercel/next",
+      "@vercel/node"
+    ],
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Nitro",
+    "slug": "nitro",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/nitro.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "matchPackage": "nitropack"
+        },
+        {
+          "matchPackage": "nitro"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "nitro build",
+      "devCommand": "nitro dev",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "vite"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Hono",
+    "slug": "hono",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/hono.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/hono",
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "hono"
+        }
+      ],
+      "some": [
+        {
+          "path": "app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']hono[\"']\\s*(?:\\))?"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "node"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Express",
+    "slug": "express",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/express.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/express",
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "express"
+        }
+      ],
+      "some": [
+        {
+          "path": "app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']express[\"']\\s*(?:\\))?"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "node"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "H3",
+    "slug": "h3",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/h3.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/h3",
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "h3"
+        }
+      ],
+      "some": [
+        {
+          "path": "app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']h3[\"']\\s*(?:\\))?"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "node"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Koa",
+    "slug": "koa",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/koa.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/koa",
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "koa"
+        }
+      ],
+      "some": [
+        {
+          "path": "app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']koa[\"']\\s*(?:\\))?"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "node"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "NestJS",
+    "slug": "nestjs",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/nestjs.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/nestjs",
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "@nestjs/core"
+        }
+      ],
+      "some": [
+        {
+          "path": "src/main.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/main.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/main.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/main.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/main.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/main.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "main.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "main.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "main.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "main.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "main.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "main.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']@nestjs/core[\"']\\s*(?:\\))?"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "node"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Elysia",
+    "slug": "elysia",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/elysia.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/elysia",
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "elysia"
+        }
+      ],
+      "some": [
+        {
+          "path": "app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']elysia[\"']\\s*(?:\\))?"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "node"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Fastify",
+    "slug": "fastify",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/fastify.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/fastify",
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "fastify"
+        }
+      ],
+      "some": [
+        {
+          "path": "app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/index.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/app.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.js",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mjs",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.mts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.ts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        },
+        {
+          "path": "src/server.cts",
+          "matchContent": "(?:from|require|import)\\s*(?:\\(\\s*)?[\"']fastify[\"']\\s*(?:\\))?"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": [
+      "node"
+    ],
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "xmcp",
+    "slug": "xmcp",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/xmcp.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "path": "xmcp.config.ts"
+        },
+        {
+          "path": "xmcp.config.js"
+        },
+        {
+          "matchPackage": "xmcp"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "xmcp build --vercel",
+      "devCommand": "xmcp dev",
+      "outputDirectory": "dist"
+    },
+    "defaultOutputDirName": "dist",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Python",
+    "slug": "python",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/python.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/python",
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "path": "requirements.txt"
+        },
+        {
+          "path": "pyproject.toml"
+        },
+        {
+          "path": "Pipfile"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/python"
+    ],
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": true
+  },
+  {
+    "name": "Ruby",
+    "slug": "ruby",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/ruby.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/ruby",
+    "detectors": {
+      "every": [
+        {
+          "path": "config.ru"
+        },
+        {
+          "path": "Gemfile"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/ruby"
+    ],
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": true,
+    "runtimeFramework": true
+  },
+  {
+    "name": "Rust",
+    "slug": "rust",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/rust.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/rust",
+    "detectors": {
+      "every": [
+        {
+          "path": "Cargo.toml"
+        },
+        {
+          "path": "src/main.rs"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/rust"
+    ],
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": true
+  },
+  {
+    "name": "Axum",
+    "slug": "axum",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/axum.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/rust",
+    "detectors": {
+      "every": [
+        {
+          "path": "Cargo.toml",
+          "matchContent": "axum\\s*="
+        },
+        {
+          "path": "src/main.rs"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/rust"
+    ],
+    "cachePattern": null,
+    "supersedes": [
+      "rust"
+    ],
+    "experimental": true,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Actix Web",
+    "slug": "actix-web",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/actix-web.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/rust",
+    "detectors": {
+      "every": [
+        {
+          "path": "Cargo.toml",
+          "matchContent": "actix-web\\s*="
+        },
+        {
+          "path": "src/main.rs"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/rust"
+    ],
+    "cachePattern": null,
+    "supersedes": [
+      "rust"
+    ],
+    "experimental": true,
+    "runtimeFramework": true
+  },
+  {
+    "name": "Bun",
+    "slug": "bun",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/bun.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/backends",
+    "detectors": {
+      "every": [
+        {
+          "path": "bun.lock"
+        }
+      ],
+      "some": [
+        {
+          "path": "server.cjs"
+        },
+        {
+          "path": "server.js"
+        },
+        {
+          "path": "server.mjs"
+        },
+        {
+          "path": "server.mts"
+        },
+        {
+          "path": "server.ts"
+        },
+        {
+          "path": "server.cts"
+        },
+        {
+          "path": "src/server.cjs"
+        },
+        {
+          "path": "src/server.js"
+        },
+        {
+          "path": "src/server.mjs"
+        },
+        {
+          "path": "src/server.mts"
+        },
+        {
+          "path": "src/server.ts"
+        },
+        {
+          "path": "src/server.cts"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": "bun install",
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/node"
+    ],
+    "cachePattern": null,
+    "supersedes": [
+      "node"
+    ],
+    "experimental": true,
+    "runtimeFramework": true
+  },
+  {
+    "name": "Node",
+    "slug": "node",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/node.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/backends",
+    "detectors": {
+      "every": [],
+      "some": [
+        {
+          "path": "server.cjs"
+        },
+        {
+          "path": "server.js"
+        },
+        {
+          "path": "server.mjs"
+        },
+        {
+          "path": "server.mts"
+        },
+        {
+          "path": "server.ts"
+        },
+        {
+          "path": "server.cts"
+        },
+        {
+          "path": "src/server.cjs"
+        },
+        {
+          "path": "src/server.js"
+        },
+        {
+          "path": "src/server.mjs"
+        },
+        {
+          "path": "src/server.mts"
+        },
+        {
+          "path": "src/server.ts"
+        },
+        {
+          "path": "src/server.cts"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/node"
+    ],
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": true
+  },
+  {
+    "name": "Go",
+    "slug": "go",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/go.svg",
+    "envPrefix": null,
+    "useRuntime": "@vercel/go",
+    "detectors": {
+      "every": [
+        {
+          "path": "go.mod"
+        }
+      ],
+      "some": [
+        {
+          "path": "main.go"
+        },
+        {
+          "path": "cmd/api/main.go"
+        },
+        {
+          "path": "cmd/server/main.go"
+        }
+      ]
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": [
+      "@vercel/go"
+    ],
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": true
+  },
+  {
+    "name": "Services",
+    "slug": "services",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/services.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": null,
+      "devCommand": null,
+      "outputDirectory": "N/A"
+    },
+    "defaultOutputDirName": "public",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  },
+  {
+    "name": "Mastra",
+    "slug": "mastra",
+    "logo": "https://api-frameworks.vercel.sh/framework-logos/mastra.svg",
+    "envPrefix": null,
+    "useRuntime": null,
+    "detectors": {
+      "every": [
+        {
+          "matchPackage": "mastra"
+        }
+      ],
+      "some": []
+    },
+    "settings": {
+      "installCommand": null,
+      "buildCommand": "mastra build",
+      "devCommand": "mastra dev",
+      "outputDirectory": ".mastra"
+    },
+    "defaultOutputDirName": ".mastra",
+    "ignoreRuntimes": null,
+    "cachePattern": null,
+    "supersedes": null,
+    "experimental": false,
+    "runtimeFramework": false
+  }
+]

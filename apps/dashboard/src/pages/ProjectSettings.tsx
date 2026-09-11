@@ -1,0 +1,710 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { api, ApiError, type EnvVarRow, type Project } from '../api.ts';
+import { Alert, CopyField, Spinner, TimeAgo } from '../components/ui.tsx';
+
+type Tab = 'general' | 'build' | 'env' | 'domains' | 'git';
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'general', label: 'General' },
+  { id: 'build', label: 'Build & Output' },
+  { id: 'env', label: 'Environment Variables' },
+  { id: 'domains', label: 'Domains' },
+  { id: 'git', label: 'Git' },
+];
+
+export function ProjectSettings() {
+  const { slug = '' } = useParams();
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<Tab>('general');
+  const [project, setProject] = useState<Project | null>(null);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const { project: p } = await api.project(slug);
+      setProject(p);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not load project');
+    }
+  }, [slug]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function save(patch: Record<string, unknown>) {
+    setError('');
+    setNotice('');
+    try {
+      const { project: updated } = await api.updateProject(slug, patch);
+      setProject(updated);
+      setNotice('Saved. New settings apply to the next deployment.');
+      if (updated.slug !== slug) navigate(`/projects/${updated.slug}/settings`);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save');
+    }
+  }
+
+  if (!project) {
+    return (
+      <div className="container">
+        <Alert kind="error">{error}</Alert>
+        {!error ? <Spinner label="Loading…" /> : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="container">
+      <div className="page-head">
+        <div className="stack">
+          <Link className="small muted" to={`/projects/${slug}`}>
+            ← {project.name}
+          </Link>
+          <h1>Project Settings</h1>
+        </div>
+      </div>
+
+      <div className="tabs">
+        {TABS.map((item) => (
+          <a
+            key={item.id}
+            href={`#${item.id}`}
+            className={tab === item.id ? 'active' : ''}
+            onClick={() => setTab(item.id)}
+          >
+            {item.label}
+          </a>
+        ))}
+      </div>
+
+      <Alert kind="error">{error}</Alert>
+      <Alert kind="success">{notice}</Alert>
+
+      {tab === 'general' ? (
+        <GeneralTab project={project} onSave={save} slug={slug} />
+      ) : null}
+      {tab === 'build' ? <BuildTab project={project} onSave={save} /> : null}
+      {tab === 'env' ? <EnvTab slug={slug} /> : null}
+      {tab === 'domains' ? <DomainsTab slug={slug} /> : null}
+      {tab === 'git' ? (
+        <GitTab project={project} slug={slug} onSave={save} />
+      ) : null}
+    </div>
+  );
+}
+
+function GeneralTab({
+  project,
+  onSave,
+  slug,
+}: {
+  project: Project;
+  onSave: (patch: Record<string, unknown>) => Promise<void>;
+  slug: string;
+}) {
+  const navigate = useNavigate();
+  const [name, setName] = useState(project.name);
+  const [nodeVersion, setNodeVersion] = useState(project.nodeVersion);
+  const [confirming, setConfirming] = useState(false);
+
+  return (
+    <>
+      <div className="card">
+        <div className="card-head">
+          <h2>Project name</h2>
+        </div>
+        <div className="card-body">
+          <div className="field">
+            <input
+              className="input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <span className="hint">
+              The URL slug <code>{project.slug}</code> stays the same so existing
+              deployment domains keep working.
+            </span>
+          </div>
+          <div className="field">
+            <label>Node.js version</label>
+            <select
+              className="select"
+              value={nodeVersion}
+              onChange={(e) => setNodeVersion(e.target.value)}
+            >
+              {['24.x', '22.x', '20.x', '18.x'].map((version) => (
+                <option key={version} value={version}>
+                  {version}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="card-foot">
+          <button
+            className="btn primary"
+            onClick={() => onSave({ name, nodeVersion })}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <h2 style={{ color: 'var(--danger)' }}>Delete project</h2>
+        </div>
+        <div className="card-body">
+          <p className="muted small">
+            Removes the project, its deployments and all build artifacts. This
+            cannot be undone.
+          </p>
+        </div>
+        <div className="card-foot">
+          {confirming ? (
+            <>
+              <button
+                className="btn danger"
+                onClick={async () => {
+                  await api.deleteProject(slug);
+                  navigate('/');
+                }}
+              >
+                Really delete {project.name}
+              </button>
+              <button className="btn ghost" onClick={() => setConfirming(false)}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button className="btn danger" onClick={() => setConfirming(true)}>
+              Delete project
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function BuildTab({
+  project,
+  onSave,
+}: {
+  project: Project;
+  onSave: (patch: Record<string, unknown>) => Promise<void>;
+}) {
+  const [form, setForm] = useState({
+    framework: project.framework ?? '',
+    rootDirectory: project.rootDirectory ?? '',
+    installCommand: project.installCommand ?? '',
+    buildCommand: project.buildCommand ?? '',
+    outputDirectory: project.outputDirectory ?? '',
+    serveMode: project.serveMode ?? '',
+  });
+  const [frameworks, setFrameworks] = useState<
+    { slug: string; name: string }[]
+  >([]);
+
+  useEffect(() => {
+    api
+      .frameworks()
+      .then((r) => setFrameworks(r.frameworks))
+      .catch(() => {});
+  }, []);
+
+  const set = (key: keyof typeof form) => (
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => setForm((current) => ({ ...current, [key]: event.target.value }));
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h2>Build & Output Settings</h2>
+      </div>
+      <div className="card-body">
+        <div className="field">
+          <label>Framework preset</label>
+          <select
+            className="select"
+            value={form.framework}
+            onChange={set('framework')}
+          >
+            <option value="">Auto-detect</option>
+            {frameworks.map((framework) => (
+              <option key={framework.slug} value={framework.slug}>
+                {framework.name}
+              </option>
+            ))}
+          </select>
+          <span className="hint">
+            Detection runs on every build using the same rules as Vercel's
+            framework presets.
+          </span>
+        </div>
+
+        <div className="field-row">
+          <div className="field">
+            <label>Root directory</label>
+            <input
+              className="input"
+              placeholder="./"
+              value={form.rootDirectory}
+              onChange={set('rootDirectory')}
+            />
+          </div>
+          <div className="field">
+            <label>Serve mode</label>
+            <select
+              className="select"
+              value={form.serveMode}
+              onChange={set('serveMode')}
+            >
+              <option value="">Auto (static, or server for SSR)</option>
+              <option value="static">Static files</option>
+              <option value="server">Long-lived server process</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="field">
+          <label>Install command</label>
+          <input
+            className="input"
+            placeholder="auto-detected from the lockfile"
+            value={form.installCommand}
+            onChange={set('installCommand')}
+          />
+        </div>
+        <div className="field">
+          <label>Build command</label>
+          <input
+            className="input"
+            placeholder="npm run build, or the framework default"
+            value={form.buildCommand}
+            onChange={set('buildCommand')}
+          />
+        </div>
+        <div className="field">
+          <label>Output directory</label>
+          <input
+            className="input"
+            placeholder="dist / build / out"
+            value={form.outputDirectory}
+            onChange={set('outputDirectory')}
+          />
+        </div>
+      </div>
+      <div className="card-foot">
+        <button className="btn primary" onClick={() => onSave(form)}>
+          Save
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EnvTab({ slug }: { slug: string }) {
+  const [rows, setRows] = useState<EnvVarRow[]>([]);
+  const [key, setKey] = useState('');
+  const [value, setValue] = useState('');
+  const [target, setTarget] = useState('production');
+  const [branch, setBranch] = useState('');
+  const [bulk, setBulk] = useState('');
+  const [error, setError] = useState('');
+  const [revealed, setRevealed] = useState<Record<string, string>>({});
+
+  const load = useCallback(async () => {
+    const { env } = await api.env(slug);
+    setRows(env);
+  }, [slug]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function add(event: React.FormEvent) {
+    event.preventDefault();
+    setError('');
+    try {
+      await api.setEnv(slug, {
+        key: key.trim(),
+        value,
+        target,
+        gitBranch: branch.trim() || undefined,
+      });
+      setKey('');
+      setValue('');
+      setBranch('');
+      await load();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save variable');
+    }
+  }
+
+  return (
+    <>
+      <div className="card">
+        <div className="card-head">
+          <h2>Add variable</h2>
+        </div>
+        <form onSubmit={add}>
+          <div className="card-body">
+            <Alert kind="error">{error}</Alert>
+            <div className="field-row">
+              <div className="field">
+                <label>Key</label>
+                <input
+                  className="input"
+                  placeholder="API_URL"
+                  value={key}
+                  onChange={(e) => setKey(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label>Value</label>
+                <input
+                  className="input"
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="field-row">
+              <div className="field">
+                <label>Environment</label>
+                <select
+                  className="select"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                >
+                  <option value="production">Production</option>
+                  <option value="preview">Preview</option>
+                  <option value="development">Development</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>Git branch (optional)</label>
+                <input
+                  className="input"
+                  placeholder="only this branch"
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="card-foot">
+            <button className="btn primary" disabled={!key.trim()}>
+              Add
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <h2>Variables</h2>
+          <div className="spacer" />
+          <span className="small faint">{rows.length} total</span>
+        </div>
+        {rows.length === 0 ? (
+          <div className="card-body muted small">No variables yet.</div>
+        ) : (
+          <table className="data">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Value</th>
+                <th>Environment</th>
+                <th>Updated</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td className="mono">{row.key}</td>
+                  <td className="mono faint">
+                    {revealed[row.id] ?? row.preview}
+                  </td>
+                  <td>
+                    {row.target}
+                    {row.gitBranch ? ` · ${row.gitBranch}` : ''}
+                  </td>
+                  <td className="small faint">
+                    <TimeAgo value={row.updatedAt} />
+                  </td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <button
+                      className="btn sm ghost"
+                      onClick={async () => {
+                        const { value: secret } = await api.revealEnv(
+                          slug,
+                          row.id
+                        );
+                        setRevealed((current) => ({
+                          ...current,
+                          [row.id]: secret,
+                        }));
+                      }}
+                    >
+                      Reveal
+                    </button>
+                    <button
+                      className="btn sm ghost"
+                      onClick={async () => {
+                        await api.deleteEnv(slug, row.id);
+                        await load();
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <h2>Import from .env</h2>
+        </div>
+        <div className="card-body">
+          <textarea
+            className="textarea"
+            placeholder={'KEY=value\nANOTHER=value'}
+            value={bulk}
+            onChange={(e) => setBulk(e.target.value)}
+          />
+        </div>
+        <div className="card-foot">
+          <button
+            className="btn"
+            disabled={!bulk.trim()}
+            onClick={async () => {
+              await api.importEnv(slug, bulk, target);
+              setBulk('');
+              await load();
+            }}
+          >
+            Import into {target}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function DomainsTab({ slug }: { slug: string }) {
+  const [domains, setDomains] = useState<
+    { id: string; domain: string; url: string; type: string }[]
+  >([]);
+  const [domain, setDomain] = useState('');
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    const { domains: list } = await api.domains(slug);
+    setDomains(list);
+  }, [slug]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h2>Domains</h2>
+      </div>
+      <div className="card-body">
+        <Alert kind="error">{error}</Alert>
+        <table className="data">
+          <thead>
+            <tr>
+              <th>Domain</th>
+              <th>Type</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {domains.map((row) => (
+              <tr key={row.id}>
+                <td>
+                  <a href={row.url} target="_blank" rel="noreferrer">
+                    {row.domain}
+                  </a>
+                </td>
+                <td className="faint">{row.type}</td>
+                <td style={{ textAlign: 'right' }}>
+                  {row.type === 'custom' ? (
+                    <button
+                      className="btn sm ghost"
+                      onClick={async () => {
+                        await api.removeDomain(slug, row.domain);
+                        await load();
+                      }}
+                    >
+                      Remove
+                    </button>
+                  ) : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="field" style={{ marginTop: 20 }}>
+          <label>Add a domain</label>
+          <div className="row">
+            <input
+              className="input"
+              placeholder="app.internal.availproject.org"
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+            />
+            <button
+              className="btn"
+              onClick={async () => {
+                setError('');
+                try {
+                  await api.addDomain(slug, domain.trim());
+                  setDomain('');
+                  await load();
+                } catch (err) {
+                  setError(
+                    err instanceof ApiError ? err.message : 'Could not add domain'
+                  );
+                }
+              }}
+            >
+              Add
+            </button>
+          </div>
+          <span className="hint">
+            Point the domain at the proxy host; it is matched on the Host header
+            and always serves the current production deployment.
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GitTab({
+  project,
+  slug,
+  onSave,
+}: {
+  project: Project;
+  slug: string;
+  onSave: (patch: Record<string, unknown>) => Promise<void>;
+}) {
+  const [webhook, setWebhook] = useState<{
+    url: string;
+    secret: string;
+  } | null>(null);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api
+      .webhookInfo(slug)
+      .then(setWebhook)
+      .catch(() => setWebhook(null));
+  }, [slug]);
+
+  return (
+    <>
+      <div className="card">
+        <div className="card-head">
+          <h2>Git integration</h2>
+        </div>
+        <div className="card-body">
+          <dl className="kv">
+            <dt>Repository</dt>
+            <dd>{project.repo?.fullName ?? 'none'}</dd>
+            <dt>Provider</dt>
+            <dd>{project.repo?.provider ?? '—'}</dd>
+            <dt>Production branch</dt>
+            <dd>{project.productionBranch}</dd>
+          </dl>
+
+          <div style={{ marginTop: 20 }} className="stack">
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={project.autoDeploy}
+                onChange={(e) => onSave({ autoDeploy: e.target.checked })}
+              />
+              Deploy automatically on push
+            </label>
+            <label className="switch">
+              <input
+                type="checkbox"
+                checked={project.previewDeploys}
+                onChange={(e) => onSave({ previewDeploys: e.target.checked })}
+              />
+              Build preview deployments for other branches and pull requests
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <h2>Webhook</h2>
+        </div>
+        <div className="card-body">
+          <Alert kind="error">{error}</Alert>
+          <Alert kind="success">{message}</Alert>
+          <p className="muted small">
+            Add this webhook to the repository to deploy the moment a commit
+            lands. Without it the platform polls the repository instead.
+          </p>
+          {webhook ? (
+            <>
+              <div className="field">
+                <label>Payload URL</label>
+                <CopyField value={webhook.url} />
+              </div>
+              <div className="field">
+                <label>Secret</label>
+                <CopyField value={webhook.secret} />
+              </div>
+            </>
+          ) : null}
+        </div>
+        {project.repo?.provider === 'github' ? (
+          <div className="card-foot">
+            <button
+              className="btn"
+              onClick={async () => {
+                setError('');
+                setMessage('');
+                try {
+                  const result = await api.registerWebhook(slug);
+                  setMessage(`Webhook created on GitHub (id ${result.hookId}).`);
+                } catch (err) {
+                  setError(
+                    err instanceof ApiError
+                      ? err.message
+                      : 'Could not create webhook'
+                  );
+                }
+              }}
+            >
+              Create webhook on GitHub
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </>
+  );
+}

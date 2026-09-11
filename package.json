@@ -1,0 +1,37 @@
+{
+  "name": "avail-deploy",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Avail Deploy \u2014 an in-house deployment platform: GitHub integration, builds, preview + production deployments.",
+  "packageManager": "npm@11.19.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/dev.mjs --prod",
+    "dev:api": "npm run dev -w @avail/api",
+    "dev:proxy": "npm run dev -w @avail/proxy",
+    "dev:dashboard": "npm run dev -w @avail/dashboard",
+    "build": "npm run build -w @avail/dashboard",
+    "typecheck": "tsc -p tsconfig.json --pretty false && tsc -p apps/dashboard/tsconfig.json --pretty false",
+    "test": "node --experimental-sqlite --experimental-strip-types --no-warnings --test tests/*.test.mjs",
+    "seed": "node --experimental-sqlite --import tsx scripts/seed.ts",
+    "doctor": "node --experimental-strip-types --experimental-sqlite --no-warnings scripts/doctor.mjs",
+    "cli": "node --experimental-strip-types --no-warnings apps/cli/src/cli.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true
+  }
+}

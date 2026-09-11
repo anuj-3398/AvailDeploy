@@ -1,0 +1,15 @@
+{
+  "name": "@avail/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./config": "./src/config.ts",
+    "./types": "./src/types.ts",
+    "./crypto": "./src/crypto.ts",
+    "./ids": "./src/ids.ts",
+    "./logger": "./src/logger.ts"
+  }
+}
