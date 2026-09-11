@@ -14,9 +14,7 @@
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "dev:rust": "node scripts/dev-rust.mjs",
     "start": "node scripts/dev.mjs --prod",
-    "dev:api": "npm run dev -w @avail/api",
     "dev:proxy": "npm run dev -w @avail/proxy",
     "dev:dashboard": "npm run dev -w @avail/dashboard",
     "build": "npm run build -w @avail/dashboard",

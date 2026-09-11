@@ -60,7 +60,7 @@ async fn main() {
         .with_state(state.clone());
 
     let addr = format!("{}:{}", state.config.host, bind_port);
-    log.info(format!("API listening on http://{addr} (apps/api's Rust port)"));
+    log.info(format!("API listening on http://{addr}"));
     log.info(format!(
         "Sign-in restricted to: {}",
         state.config.allowed_email_domains.iter().map(|d| format!("@{d}")).collect::<Vec<_>>().join(", ")
@@ -70,7 +70,6 @@ async fn main() {
         "Deployments queue as rows; avail-worker (this crate's other binary) owns actually \
          building them — see docs/rust-api-migration-plan.md.",
     );
-    log.info("Not yet wired into `npm run dev` — start manually and point the dashboard at it to test.");
 
     let listener = tokio::net::TcpListener::bind(&addr).await.expect("bind listener");
     axum::serve(listener, app).await.expect("serve");

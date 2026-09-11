@@ -358,7 +358,30 @@ Phase 3's optional status endpoint would fix if the distinction ever matters.
       code between the two binaries.
 - [ ] `apps/proxy` port — not started. Needed for "no Node anywhere in the
       running platform"; not needed for "no Node in the build path" (done).
-- [ ] Cutover (swap `scripts/dev.mjs` to the Rust API + a Rust worker) — not
-      done; the Node API and Node `apps/worker` are still what actually
-      serve/build the running app day to day. `avail-api`/`avail-worker`
-      are proven correct but must be started manually to use them.
+- [x] **Cutover.** `apps/api` and `apps/worker` deleted outright — nothing
+      else in the tree imported from either (`apps/proxy` never called into
+      `apps/api`'s HTTP surface, only the shared packages). `scripts/dev.mjs`
+      (absorbing the former `scripts/dev-rust.mjs`) now builds and starts
+      `avail-api`/`avail-worker` directly; `npm run dev`/`npm start` are the
+      Rust backend, full stop — there is no Node API or Node build runner
+      to fall back to any more.
+  - One real gap this closed carefully rather than silently: `apps/api`'s
+    own `tests/unit.test.mjs` imported `apps/api/src/lib/google.ts` directly
+    to unit-test `authorizeUrl`/`configured` (the OAuth URL-building logic,
+    the `hd` Workspace-domain hint, `prompt=select_account`) — the only
+    place that logic was unit-tested; `rust-api`'s `google.rs` had only been
+    verified by live end-to-end testing. Rather than deleting that coverage
+    along with `apps/api`, it was ported into `google.rs`'s own
+    `#[cfg(test)]` module (`authorize_url`/`configured` were split into
+    `Config`-free `_for` helpers so they could be unit-tested without
+    constructing a whole `Config`), and the JS describe block removed.
+  - **Still open, unchanged by this step:** the SMTP mailer still has no
+    Rust port (console-echo path only), and `apps/proxy` is still pure
+    Node. Because of the latter, `packages/db`, `packages/shared`,
+    `apps/builder`, and `packages/frameworks` all stay in the tree — their
+    *logic* is duplicated in Rust, but `apps/proxy` imports them directly
+    (`@avail/db` for reading deployments/aliases, `@avail/shared` for
+    config/crypto/types, `@avail/builder`'s `run`/`kill`/`execPath` to
+    manage running server-mode deployments) and has no Rust replacement
+    yet. Porting `apps/proxy` is the one remaining step for "no Node
+    anywhere in the running platform," not just in the build path.

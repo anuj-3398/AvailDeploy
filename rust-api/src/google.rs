@@ -5,7 +5,7 @@ use base64::Engine as _;
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::config::Config;
+use crate::config::{Config, GoogleConfig};
 use crate::db::now_ms;
 
 const AUTH_ENDPOINT: &str = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -47,14 +47,22 @@ fn decode_jwt_payload(token: &str) -> Result<IdTokenClaims, GoogleError> {
 }
 
 pub fn configured(cfg: &Config) -> bool {
-    cfg.google.client_id.is_some() && cfg.google.client_secret.is_some()
+    configured_for(&cfg.google)
+}
+
+fn configured_for(google: &GoogleConfig) -> bool {
+    google.client_id.is_some() && google.client_secret.is_some()
 }
 
 /// Google's consent screen URL. When exactly one domain is allow-listed we
 /// pass it as the `hd` hint, so Workspace users land on their work account
 /// instead of picking from every Google account they're signed into.
 pub fn authorize_url(cfg: &Config, redirect_uri: &str, state: &str) -> String {
-    let client_id = cfg.google.client_id.as_deref().unwrap_or("");
+    authorize_url_for(&cfg.google, &cfg.allowed_email_domains, redirect_uri, state)
+}
+
+fn authorize_url_for(google: &GoogleConfig, allowed_email_domains: &[String], redirect_uri: &str, state: &str) -> String {
+    let client_id = google.client_id.as_deref().unwrap_or("");
     let mut url = format!(
         "{AUTH_ENDPOINT}?client_id={}&redirect_uri={}&response_type=code&scope={}&state={}&access_type=online&prompt=select_account",
         urlencoding::encode(client_id),
@@ -62,8 +70,8 @@ pub fn authorize_url(cfg: &Config, redirect_uri: &str, state: &str) -> String {
         urlencoding::encode("openid email profile"),
         urlencoding::encode(state),
     );
-    if cfg.allowed_email_domains.len() == 1 {
-        url.push_str(&format!("&hd={}", urlencoding::encode(&cfg.allowed_email_domains[0])));
+    if allowed_email_domains.len() == 1 {
+        url.push_str(&format!("&hd={}", urlencoding::encode(&allowed_email_domains[0])));
     }
     url
 }
@@ -130,4 +138,67 @@ pub async fn exchange_code(cfg: &Config, code: &str, redirect_uri: &str) -> Resu
     }
 
     Ok(GoogleIdentity { email, name: claims.name, picture: claims.picture })
+}
+
+/// Ported from the deleted `apps/api`'s `tests/unit.test.mjs` ("google
+/// sign-in" describe block) when `apps/api` was removed in favor of this
+/// crate — see docs/rust-api-migration-plan.md.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn google(client_id: Option<&str>, client_secret: Option<&str>) -> GoogleConfig {
+        GoogleConfig { client_id: client_id.map(String::from), client_secret: client_secret.map(String::from) }
+    }
+
+    const REDIRECT_URI: &str = "http://localhost:3001/api/auth/google/callback";
+
+    #[test]
+    fn configured_only_when_both_credentials_are_present() {
+        assert!(configured_for(&google(Some("id"), Some("secret"))));
+        assert!(!configured_for(&google(None, Some("secret"))));
+        assert!(!configured_for(&google(Some("id"), None)));
+        assert!(!configured_for(&google(None, None)));
+    }
+
+    #[test]
+    fn builds_a_standards_compliant_authorization_url() {
+        let google = google(Some("test-client-id.apps.googleusercontent.com"), Some("test-client-secret"));
+        let raw = authorize_url_for(&google, &[], REDIRECT_URI, "signed-state");
+        let url = reqwest::Url::parse(&raw).unwrap();
+        let get = |key: &str| url.query_pairs().find(|(k, _)| k == key).map(|(_, v)| v.into_owned());
+
+        assert_eq!(url.scheme(), "https");
+        assert_eq!(url.host_str(), Some("accounts.google.com"));
+        assert_eq!(url.path(), "/o/oauth2/v2/auth");
+        assert_eq!(get("response_type"), Some("code".to_string()));
+        assert_eq!(get("scope"), Some("openid email profile".to_string()));
+        assert_eq!(get("redirect_uri"), Some(REDIRECT_URI.to_string()));
+        assert_eq!(get("state"), Some("signed-state".to_string()));
+        assert_eq!(get("client_id"), Some("test-client-id.apps.googleusercontent.com".to_string()));
+    }
+
+    #[test]
+    fn hints_the_allow_listed_workspace_domain_to_the_account_chooser() {
+        let google = google(Some("id"), Some("secret"));
+        let domains = vec!["availproject.org".to_string()];
+        let url = reqwest::Url::parse(&authorize_url_for(&google, &domains, REDIRECT_URI, "state")).unwrap();
+        assert_eq!(url.query_pairs().find(|(k, _)| k == "hd").map(|(_, v)| v.into_owned()), Some("availproject.org".to_string()));
+    }
+
+    #[test]
+    fn omits_the_hd_hint_when_the_domain_is_not_unambiguous() {
+        let google = google(Some("id"), Some("secret"));
+        for domains in [vec![], vec!["a.org".to_string(), "b.org".to_string()]] {
+            let url = reqwest::Url::parse(&authorize_url_for(&google, &domains, REDIRECT_URI, "state")).unwrap();
+            assert!(url.query_pairs().find(|(k, _)| k == "hd").is_none());
+        }
+    }
+
+    #[test]
+    fn sends_users_through_the_account_chooser_rather_than_silently_reusing_one() {
+        let google = google(Some("id"), Some("secret"));
+        let url = reqwest::Url::parse(&authorize_url_for(&google, &[], REDIRECT_URI, "state")).unwrap();
+        assert_eq!(url.query_pairs().find(|(k, _)| k == "prompt").map(|(_, v)| v.into_owned()), Some("select_account".to_string()));
+    }
 }
