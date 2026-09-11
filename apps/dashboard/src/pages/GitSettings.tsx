@@ -15,6 +15,7 @@ export function GitSettings() {
     deploymentDomain: string;
   } | null>(null);
   const [status, setStatus] = useState<any>(null);
+  const [showTokenForm, setShowTokenForm] = useState(false);
 
   const load = useCallback(async () => {
     const [list, systemInfo] = await Promise.all([
@@ -121,41 +122,73 @@ export function GitSettings() {
         ) : null}
       </div>
 
-      <div className="card">
-        <div className="card-head">
-          <h2>Personal access token</h2>
-        </div>
-        <form onSubmit={connect}>
-          <div className="card-body">
-            <p className="muted small">
-              Create a token with the <code>repo</code> and{' '}
-              <code>admin:repo_hook</code> scopes at{' '}
-              <a
-                href="https://github.com/settings/tokens/new"
-                target="_blank"
-                rel="noreferrer"
-              >
-                github.com/settings/tokens
-              </a>
-              . Tokens are encrypted at rest with AES-256-GCM.
-            </p>
-            <div className="field">
-              <input
-                className="input mono"
-                type="password"
-                placeholder="ghp_…"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="card-foot">
-            <button className="btn primary" disabled={busy || !token.trim()}>
-              {busy ? 'Verifying…' : 'Connect'}
+      {info?.githubOAuth && !showTokenForm ? (
+        <div className="card">
+          <div className="card-body" style={{ padding: 12 }}>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => setShowTokenForm(true)}
+            >
+              Use a personal access token instead
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+      ) : (
+        <div className="card">
+          <div className="card-head">
+            <h2>Personal access token</h2>
+            {info?.githubOAuth ? (
+              <>
+                <div className="spacer" />
+                <span className="small faint">
+                  Most people want{' '}
+                  <strong>Connect with GitHub OAuth</strong> above instead
+                </span>
+              </>
+            ) : null}
+          </div>
+          <form onSubmit={connect}>
+            <div className="card-body">
+              <p className="muted small">
+                Create a token with the <code>repo</code> and{' '}
+                <code>admin:repo_hook</code> scopes at{' '}
+                <a
+                  href="https://github.com/settings/tokens/new"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  github.com/settings/tokens
+                </a>
+                . Tokens are encrypted at rest with AES-256-GCM.
+              </p>
+              <div className="field">
+                <input
+                  className="input mono"
+                  type="password"
+                  placeholder="ghp_…"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="card-foot">
+              <button className="btn primary" disabled={busy || !token.trim()}>
+                {busy ? 'Verifying…' : 'Connect'}
+              </button>
+              {info?.githubOAuth ? (
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  onClick={() => setShowTokenForm(false)}
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="card">
         <div className="card-head">
