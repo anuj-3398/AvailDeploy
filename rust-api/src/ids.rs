@@ -46,6 +46,9 @@ pub fn new_alias_id() -> String {
 pub fn new_integration_id() -> String {
     id_default("git")
 }
+pub fn new_comment_id() -> String {
+    id_default("cmt")
+}
 
 /// `My Cool App` -> `my-cool-app`; safe to use as a hostname label.
 pub fn slugify(input: &str) -> String {

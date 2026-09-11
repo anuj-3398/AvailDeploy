@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
-use crate::auth::AuthUser;
+use crate::auth::{require_owner, AuthUser};
 use crate::config::Config;
 use crate::crypto::random_secret;
 use crate::db::types::Project;
@@ -54,6 +54,7 @@ pub fn serialize_project(conn: &Connection, cfg: &Config, project: &Project) -> 
         "serveMode": project.serve_mode,
         "repo": repo,
         "productionBranch": project.production_branch,
+        "ignoreCommand": project.ignore_command,
         "autoDeploy": project.auto_deploy != 0,
         "previewDeploys": project.preview_deploys != 0,
         "productionUrl": url_for(cfg, &format!("{}.{}", project.slug, cfg.deployment_domain)),
@@ -243,6 +244,7 @@ async fn create_project(
             preview_deploys: if body.preview_deploys == Some(false) { 0 } else { 1 },
             git_integration_id: integration_id,
             webhook_secret: Some(random_secret(24)),
+            ignore_command: None,
             created_by: user.user.id.clone(),
             created_at: now,
             updated_at: now,
@@ -322,6 +324,7 @@ const PATCH_FIELD_MAP: &[(&str, &str)] = &[
     ("nodeVersion", "node_version"),
     ("serveMode", "serve_mode"),
     ("productionBranch", "production_branch"),
+    ("ignoreCommand", "ignore_command"),
 ];
 
 async fn patch_project(_user: AuthUser, State(state): State<SharedState>, Path(key): Path<String>, Json(body): Json<Map<String, Value>>) -> AppResult<Json<Value>> {
@@ -353,6 +356,7 @@ async fn patch_project(_user: AuthUser, State(state): State<SharedState>, Path(k
 }
 
 async fn delete_project(user: AuthUser, State(state): State<SharedState>, Path(key): Path<String>) -> AppResult<Json<Value>> {
+    require_owner(&user.user)?;
     let conn = state.db.lock();
     let project = require_project(&conn, &key)?;
     for deployment in deployments::for_project(&conn, &project.id, 1000, 0)? {
@@ -627,7 +631,8 @@ struct DomainParams {
     domain: String,
 }
 
-async fn delete_domain(_user: AuthUser, State(state): State<SharedState>, Path(params): Path<DomainParams>) -> AppResult<Json<Value>> {
+async fn delete_domain(user: AuthUser, State(state): State<SharedState>, Path(params): Path<DomainParams>) -> AppResult<Json<Value>> {
+    require_owner(&user.user)?;
     let conn = state.db.lock();
     let project = require_project(&conn, &params.key)?;
     let alias = aliases::by_domain(&conn, &params.domain)?.filter(|a| a.project_id == project.id);

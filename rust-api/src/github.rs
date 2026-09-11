@@ -193,10 +193,8 @@ pub async fn delete_webhook(api_url: &str, token: &str, full_name: &str, hook_id
     Ok(())
 }
 
-/// Reports deployment status back onto the commit in GitHub. Unused in this
-/// binary today — that's `apps/worker`'s job, using its own copy of
-/// `lib/github.ts`, once a build actually finishes. Ported for parity.
-#[allow(dead_code)]
+/// Reports deployment status back onto the commit in GitHub. Called from
+/// `bin/worker.rs` when a build starts, succeeds, or fails.
 pub async fn create_commit_status(
     api_url: &str,
     token: &str,
@@ -217,8 +215,8 @@ pub async fn create_commit_status(
     Ok(())
 }
 
-/// Also unused here for the same reason as `create_commit_status`.
-#[allow(dead_code)]
+/// Posts a "Deploy Preview ready" comment. Called from `bin/worker.rs` when
+/// a PR-triggered preview deployment reaches `READY`.
 pub async fn comment_on_pull_request(api_url: &str, token: &str, full_name: &str, pr_number: i64, body_text: &str) -> Result<(), GitHubError> {
     let body = json!({ "body": body_text });
     request(api_url, token, reqwest::Method::POST, &format!("/repos/{full_name}/issues/{pr_number}/comments"), Some(body)).await?;

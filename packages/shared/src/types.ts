@@ -7,9 +7,10 @@ export type DeploymentState =
   | 'UPLOADING'
   | 'READY'
   | 'ERROR'
-  | 'CANCELED';
+  | 'CANCELED'
+  | 'SKIPPED';
 
-export const TERMINAL_STATES: DeploymentState[] = ['READY', 'ERROR', 'CANCELED'];
+export const TERMINAL_STATES: DeploymentState[] = ['READY', 'ERROR', 'CANCELED', 'SKIPPED'];
 
 export type DeploymentTarget = 'production' | 'preview';
 

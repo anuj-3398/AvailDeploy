@@ -133,6 +133,18 @@ pub fn resolve_user(state: &SharedState, headers: &header::HeaderMap, jar: &Cook
     Some((user, session.id))
 }
 
+/// Gates a destructive action to the workspace owner (the first user ever
+/// to sign in — see `upsert_user` above). `role` has existed on every user
+/// row since the schema was ported from Node, but nothing ever checked it;
+/// this is that check.
+pub fn require_owner(user: &User) -> Result<(), AppError> {
+    if user.role == "owner" {
+        Ok(())
+    } else {
+        Err(AppError::new(StatusCode::FORBIDDEN, "owner_required", "Only the workspace owner can do this"))
+    }
+}
+
 pub fn public_user(user: &User) -> Value {
     json!({
         "id": user.id,

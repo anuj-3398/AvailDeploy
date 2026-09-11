@@ -23,12 +23,13 @@ use serde_json::{json, Value};
 
 use crate::auth::{resolve_user, AuthUser};
 use crate::db::types::Deployment;
-use crate::db::{build_logs, deployments, projects, request_logs};
+use crate::db::{build_logs, comments, deployments, projects, request_logs, users};
 use crate::error::{AppError, AppResult};
+use crate::ids::new_comment_id;
 use crate::services::deployments::{promote_to_production, serialize_deployment};
 use crate::state::SharedState;
 
-const TERMINAL_STATES: [&str; 3] = ["READY", "ERROR", "CANCELED"];
+const TERMINAL_STATES: [&str; 4] = ["READY", "ERROR", "CANCELED", "SKIPPED"];
 
 pub fn router() -> Router<SharedState> {
     Router::new()
@@ -42,6 +43,8 @@ pub fn router() -> Router<SharedState> {
         .route("/api/deployments/:id/promote", axum::routing::post(promote))
         .route("/api/deployments/:id/redeploy", axum::routing::post(redeploy))
         .route("/api/deployments/:id", axum::routing::delete(delete_deployment))
+        .route("/api/deployments/:id/comments", get(list_comments).post(post_comment))
+        .route("/api/deployments/:id/comments/:comment_id", axum::routing::delete(delete_comment))
 }
 
 fn require_deployment(conn: &rusqlite::Connection, id: &str) -> AppResult<Deployment> {
@@ -360,6 +363,55 @@ async fn delete_deployment(_user: AuthUser, State(state): State<SharedState>, Pa
     }
     let _ = std::fs::remove_dir_all(state.config.deployments_dir.join(&deployment.id));
     deployments::delete(&conn, &deployment.id)?;
+    Ok(Json(json!({ "ok": true })))
+}
+
+fn serialize_comment(conn: &rusqlite::Connection, comment: &crate::db::types::DeploymentComment) -> Value {
+    let author = users::by_id(conn, &comment.user_id).ok().flatten();
+    json!({
+        "id": comment.id,
+        "deploymentId": comment.deployment_id,
+        "body": comment.body,
+        "createdAt": comment.created_at,
+        "user": author.map(|u| json!({ "id": u.id, "name": u.name, "email": u.email, "avatarUrl": u.avatar_url })),
+    })
+}
+
+/// Preview comments — a lightweight, in-dashboard comment thread on one
+/// deployment. New in the Rust backend; there is no Node equivalent.
+async fn list_comments(_user: AuthUser, State(state): State<SharedState>, Path(id): Path<String>) -> AppResult<Json<Value>> {
+    let conn = state.db.lock();
+    require_deployment(&conn, &id)?;
+    let rows = comments::for_deployment(&conn, &id)?.into_iter().map(|c| serialize_comment(&conn, &c)).collect::<Vec<_>>();
+    Ok(Json(json!({ "comments": rows })))
+}
+
+#[derive(Deserialize)]
+struct PostCommentBody {
+    body: String,
+}
+
+async fn post_comment(user: AuthUser, State(state): State<SharedState>, Path(id): Path<String>, Json(input): Json<PostCommentBody>) -> AppResult<(StatusCode, Json<Value>)> {
+    let body = input.body.trim();
+    if body.is_empty() {
+        return Err(AppError::bad_request("empty_body", "Comment cannot be empty"));
+    }
+    if body.len() > 4000 {
+        return Err(AppError::bad_request("too_long", "Comment is too long (max 4000 characters)"));
+    }
+    let conn = state.db.lock();
+    require_deployment(&conn, &id)?;
+    let comment = comments::create(&conn, &new_comment_id(), &id, &user.user.id, body)?;
+    Ok((StatusCode::CREATED, Json(json!({ "comment": serialize_comment(&conn, &comment) }))))
+}
+
+async fn delete_comment(user: AuthUser, State(state): State<SharedState>, Path((id, comment_id)): Path<(String, String)>) -> AppResult<Json<Value>> {
+    let conn = state.db.lock();
+    require_deployment(&conn, &id)?;
+    let deleted = comments::delete(&conn, &comment_id, &user.user.id)?;
+    if deleted == 0 {
+        return Err(AppError::not_found("Comment not found, or you are not its author"));
+    }
     Ok(Json(json!({ "ok": true })))
 }
 

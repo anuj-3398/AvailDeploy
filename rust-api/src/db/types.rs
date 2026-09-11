@@ -132,6 +132,10 @@ pub struct Project {
     pub preview_deploys: i64,
     pub git_integration_id: Option<String>,
     pub webhook_secret: Option<String>,
+    /// "Ignored Build Step": a shell command run after checkout. Exit 0
+    /// skips the build entirely (a deployment lands `SKIPPED`); any other
+    /// exit code proceeds normally. `None`/empty never skips.
+    pub ignore_command: Option<String>,
     pub created_by: String,
     pub created_at: i64,
     pub updated_at: i64,
@@ -160,6 +164,7 @@ impl FromRow for Project {
             preview_deploys: row.get("preview_deploys")?,
             git_integration_id: row.get("git_integration_id")?,
             webhook_secret: row.get("webhook_secret")?,
+            ignore_command: row.get("ignore_command")?,
             created_by: row.get("created_by")?,
             created_at: row.get("created_at")?,
             updated_at: row.get("updated_at")?,
@@ -351,6 +356,29 @@ impl FromRow for RequestLog {
             duration_ms: row.get("duration_ms")?,
             kind: row.get("kind")?,
             message: row.get("message")?,
+        })
+    }
+}
+
+/// A comment on one deployment — dashboard-only, `apps/proxy` never reads
+/// this table. See `db::comments`.
+#[derive(Debug, Clone)]
+pub struct DeploymentComment {
+    pub id: String,
+    pub deployment_id: String,
+    pub user_id: String,
+    pub body: String,
+    pub created_at: i64,
+}
+
+impl FromRow for DeploymentComment {
+    fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
+        Ok(DeploymentComment {
+            id: row.get("id")?,
+            deployment_id: row.get("deployment_id")?,
+            user_id: row.get("user_id")?,
+            body: row.get("body")?,
+            created_at: row.get("created_at")?,
         })
     }
 }

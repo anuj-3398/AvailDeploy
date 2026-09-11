@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { api, ApiError, type Deployment, type LogLine } from '../api.ts';
+import { api, ApiError, type Comment, type Deployment, type LogLine } from '../api.ts';
 import {
   Alert,
   Duration,
@@ -11,6 +11,16 @@ import {
 } from '../components/ui.tsx';
 
 const ACTIVE_STATES = ['QUEUED', 'INITIALIZING', 'BUILDING', 'UPLOADING'];
+
+function initials(value: string): string {
+  return value
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
 
 export function DeploymentPage() {
   const { slug = '', id = '' } = useParams();
@@ -23,12 +33,53 @@ export function DeploymentPage() {
   const [follow, setFollow] = useState(true);
   const logBox = useRef<HTMLDivElement>(null);
 
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [draft, setDraft] = useState('');
+  const [commentBusy, setCommentBusy] = useState(false);
+  const [commentError, setCommentError] = useState('');
+  const [meId, setMeId] = useState('');
+
   useEffect(() => {
     api
       .deployment(id)
       .then(({ deployment: d }) => setDeployment(d))
       .catch((err: ApiError) => setError(err.message));
+    api.me().then(({ user }) => setMeId(user.id)).catch(() => {});
   }, [id]);
+
+  function loadComments() {
+    api
+      .comments(id)
+      .then(({ comments: rows }) => setComments(rows))
+      .catch((err: ApiError) => setCommentError(err.message));
+  }
+
+  useEffect(loadComments, [id]);
+
+  async function submitComment() {
+    const body = draft.trim();
+    if (!body) return;
+    setCommentBusy(true);
+    setCommentError('');
+    try {
+      await api.postComment(id, body);
+      setDraft('');
+      loadComments();
+    } catch (err) {
+      setCommentError((err as ApiError).message);
+    } finally {
+      setCommentBusy(false);
+    }
+  }
+
+  async function removeComment(commentId: string) {
+    try {
+      await api.deleteComment(id, commentId);
+      loadComments();
+    } catch (err) {
+      setCommentError((err as ApiError).message);
+    }
+  }
 
   /** Live logs + state over SSE, with replay of everything already emitted. */
   useEffect(() => {
@@ -288,6 +339,63 @@ export function DeploymentPage() {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-head">
+          <h2>Comments</h2>
+          <span className="small faint">{comments.length}</span>
+        </div>
+        <div className="card-body" style={{ padding: 12 }}>
+          {commentError ? <Alert kind="error">{commentError}</Alert> : null}
+          {comments.length === 0 ? (
+            <p className="faint small">
+              No comments yet — leave a note about this deployment for
+              whoever looks at it next.
+            </p>
+          ) : (
+            <ul className="comment-list">
+              {comments.map((c) => (
+                <li key={c.id} className="comment">
+                  <span className="avatar tiny" aria-hidden>
+                    {initials(c.user?.name ?? c.user?.email ?? '?')}
+                  </span>
+                  <div className="comment-body">
+                    <div className="comment-head">
+                      <strong>{c.user?.name ?? c.user?.email ?? 'Unknown'}</strong>
+                      <TimeAgo value={c.createdAt} />
+                      {c.user?.id === meId ? (
+                        <button
+                          className="btn danger sm comment-delete"
+                          onClick={() => removeComment(c.id)}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                    <p>{c.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="comment-form">
+            <textarea
+              className="textarea"
+              placeholder="Leave a comment on this deployment…"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={2}
+            />
+            <button
+              className="btn"
+              disabled={commentBusy || !draft.trim()}
+              onClick={submitComment}
+            >
+              {commentBusy ? 'Posting…' : 'Comment'}
+            </button>
           </div>
         </div>
       </div>

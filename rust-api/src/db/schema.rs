@@ -193,6 +193,22 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at DESC);
 "#;
 
-/// Additive, idempotent migrations applied after the base schema — mirror
-/// `packages/db/src/schema.ts`'s `MIGRATIONS` array here in lockstep.
-pub const MIGRATIONS: &[&str] = &[];
+/// Additive, idempotent migrations applied after the base schema. Ran to
+/// exist alongside `packages/db/src/schema.ts`'s own `MIGRATIONS` array —
+/// mirror one there too only if `apps/proxy` (the one Node process left)
+/// ever needs to read the same column; it doesn't for either of these, so
+/// they're Rust-only.
+pub const MIGRATIONS: &[&str] = &[
+    // "Ignored Build Step" (see `Project::ignore_command`) — Rust-only.
+    "ALTER TABLE projects ADD COLUMN ignore_command TEXT",
+    // Preview comments — a lightweight, dashboard-only comment thread
+    // attached to one deployment. Rust-only; apps/proxy never reads it.
+    r#"CREATE TABLE IF NOT EXISTS deployment_comments (
+         id            TEXT PRIMARY KEY,
+         deployment_id TEXT NOT NULL REFERENCES deployments(id) ON DELETE CASCADE,
+         user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+         body          TEXT NOT NULL,
+         created_at    INTEGER NOT NULL
+       )"#,
+    "CREATE INDEX IF NOT EXISTS idx_comments_deployment ON deployment_comments(deployment_id, created_at ASC)",
+];

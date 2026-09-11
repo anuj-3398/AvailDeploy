@@ -203,6 +203,53 @@ pre,
   text-transform: uppercase;
 }
 
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+
+.comment {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.comment-head .comment-delete {
+  margin-left: auto;
+}
+
+.comment-body p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.comment-form {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.comment-form .textarea {
+  flex: 1;
+  min-height: 44px;
+}
+
 .container {
   width: 100%;
   max-width: 1100px;

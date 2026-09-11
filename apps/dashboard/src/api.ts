@@ -51,6 +51,14 @@ export interface User {
   role: string;
 }
 
+export interface Comment {
+  id: string;
+  deploymentId: string;
+  body: string;
+  createdAt: number;
+  user: Pick<User, 'id' | 'name' | 'email' | 'avatarUrl'> | null;
+}
+
 export interface Integration {
   id: string;
   provider: string;
@@ -67,7 +75,8 @@ export type DeploymentState =
   | 'UPLOADING'
   | 'READY'
   | 'ERROR'
-  | 'CANCELED';
+  | 'CANCELED'
+  | 'SKIPPED';
 
 export interface Deployment {
   id: string;
@@ -384,4 +393,15 @@ export const api = {
     }),
   deleteDeployment: (id: string) =>
     request<{ ok: boolean }>(`/api/deployments/${id}`, { method: 'DELETE' }),
+  comments: (id: string) =>
+    request<{ comments: Comment[] }>(`/api/deployments/${id}/comments`),
+  postComment: (id: string, body: string) =>
+    request<{ comment: Comment }>(`/api/deployments/${id}/comments`, {
+      method: 'POST',
+      ...json({ body }),
+    }),
+  deleteComment: (id: string, commentId: string) =>
+    request<{ ok: boolean }>(`/api/deployments/${id}/comments/${commentId}`, {
+      method: 'DELETE',
+    }),
 };

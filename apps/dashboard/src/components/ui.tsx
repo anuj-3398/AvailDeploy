@@ -27,6 +27,7 @@ const STATE_CLASS: Record<DeploymentState, string> = {
   READY: 'ready',
   ERROR: 'error',
   CANCELED: 'queued',
+  SKIPPED: 'queued',
 };
 
 const STATE_LABEL: Record<DeploymentState, string> = {
@@ -37,6 +38,7 @@ const STATE_LABEL: Record<DeploymentState, string> = {
   READY: 'Ready',
   ERROR: 'Error',
   CANCELED: 'Canceled',
+  SKIPPED: 'Skipped',
 };
 
 export function StatusBadge({ state }: { state: DeploymentState }) {

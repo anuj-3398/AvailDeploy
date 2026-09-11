@@ -87,6 +87,13 @@ pub struct BuildOutput {
     pub duration_ms: i64,
 }
 
+/// What `run_build` actually did — a normal build, or nothing at all
+/// because the project's "Ignored Build Step" said to skip it.
+pub enum BuildOutcome {
+    Built(BuildOutput),
+    Skipped { commit: CommitInfo },
+}
+
 pub struct DeploymentPaths {
     pub dir: PathBuf,
     pub src: PathBuf,
@@ -224,7 +231,7 @@ fn in_snapshot(workspace_src: &std::path::Path, abs: &std::path::Path) -> String
 /// Runs a complete deployment build: fetch source, resolve settings,
 /// install, build, then collect the output into an immutable deployment
 /// directory.
-pub async fn run_build(cfg: &Config, input: BuildInput) -> Result<BuildOutput, String> {
+pub async fn run_build(cfg: &Config, input: BuildInput) -> Result<BuildOutcome, String> {
     let BuildInput { deployment, project, env: input_env, git_token, repo_url, log, cancel, on_phase } = input;
     let started = crate::db::now_ms();
     let paths_out = deployment_paths(cfg, &deployment.id);
@@ -277,6 +284,34 @@ pub async fn run_build(cfg: &Config, input: BuildInput) -> Result<BuildOutput, S
     )
     .await?;
     log("info", &format!("Checked out {} — {}", &commit.sha[..commit.sha.len().min(7)], commit.message));
+
+    /* ------------------------------------------------------ ignore command */
+    // "Ignored Build Step": exit 0 skips the build, any other exit code
+    // (including a failure to even run it) proceeds normally.
+    if let Some(ignore_command) = project.ignore_command.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
+        log("info", &format!("Running ignore command: {ignore_command}"));
+        let result = executor::run(
+            cfg,
+            executor::RunOptions {
+                command: ignore_command.to_string(),
+                cwd: workspace.src.clone(),
+                env: HashMap::new(),
+                script_dir: workspace.scripts.clone(),
+                label: "ignore".to_string(),
+                timeout_ms: 5 * 60_000,
+                cancel: cancel.clone(),
+                log: log.clone(),
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+
+        if result.code == 0 {
+            log("info", "Ignore command exited 0 — skipping this build");
+            return Ok(BuildOutcome::Skipped { commit });
+        }
+        log("info", &format!("Ignore command exited {} — continuing with the build", result.code));
+    }
 
     /* ------------------------------------------------------------ settings */
     let root_config = read_project_config(&workspace.src)?;
@@ -433,7 +468,7 @@ pub async fn run_build(cfg: &Config, input: BuildInput) -> Result<BuildOutput, S
     let duration_ms = crate::db::now_ms() - started;
     log("info", &format!("Build completed in {:.1}s", duration_ms as f64 / 1000.0));
 
-    Ok(BuildOutput {
+    Ok(BuildOutcome::Built(BuildOutput {
         commit,
         framework: settings.framework,
         serve_mode,
@@ -441,7 +476,7 @@ pub async fn run_build(cfg: &Config, input: BuildInput) -> Result<BuildOutput, S
         output_path,
         functions: discovered,
         duration_ms,
-    })
+    }))
 }
 
 /// Removes a deployment's directory from disk.

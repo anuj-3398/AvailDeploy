@@ -8,6 +8,7 @@ pub mod types;
 
 pub mod aliases;
 pub mod build_logs;
+pub mod comments;
 pub mod deployments;
 pub mod env_vars;
 pub mod events;

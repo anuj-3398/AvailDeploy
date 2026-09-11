@@ -15,11 +15,12 @@ use std::time::Duration;
 use tokio::sync::Semaphore;
 use tokio_util::sync::CancellationToken;
 
-use avail_api::builder::{self, executor::LogFn, BuildInput, BuildPhase};
+use avail_api::builder::{self, executor::LogFn, BuildInput, BuildOutcome, BuildPhase};
 use avail_api::config::{self, Config};
 use avail_api::crypto::Crypto;
-use avail_api::db::types::Deployment;
+use avail_api::db::types::{Deployment, Project};
 use avail_api::db::{self, deployments, env_vars, events, integrations, projects, Db};
+use avail_api::github;
 use avail_api::ids::new_alias_id;
 use avail_api::logger;
 
@@ -189,6 +190,8 @@ impl Worker {
             (env, token)
         };
 
+        self.report_commit_status(&deployment, &project, &git_token, "pending", "Building…", &url_for(&self.config, &deployment.url)).await;
+
         let log = self.log_sink(deployment.id.clone());
         let this_for_phase = self.clone();
         let deployment_id_for_phase = deployment.id.clone();
@@ -205,7 +208,7 @@ impl Worker {
                 deployment: deployment.clone(),
                 project: project.clone(),
                 env,
-                git_token,
+                git_token: git_token.clone(),
                 repo_url,
                 log: log.clone(),
                 cancel: cancel.clone(),
@@ -215,7 +218,25 @@ impl Worker {
         .await;
 
         match result {
-            Ok(output) => {
+            Ok(BuildOutcome::Skipped { commit }) => {
+                self.publish_note("info", &deployment.id, "Ignore command exited 0 — build skipped");
+                {
+                    let conn = self.db.lock();
+                    let _ = deployments::update(
+                        &conn,
+                        &deployment.id,
+                        &[
+                            ("state", rusqlite::types::Value::Text("SKIPPED".into())),
+                            ("commit_sha", rusqlite::types::Value::Text(commit.sha.clone())),
+                            ("build_duration_ms", rusqlite::types::Value::Integer(db::now_ms() - started)),
+                            ("error", rusqlite::types::Value::Null),
+                        ],
+                    );
+                }
+                self.report_commit_status(&deployment, &project, &git_token, "success", "Build skipped (ignored)", &url_for(&self.config, &deployment.url)).await;
+                Ok(())
+            }
+            Ok(BuildOutcome::Built(output)) => {
                 {
                     let conn = self.db.lock();
                     let _ = deployments::update(
@@ -253,8 +274,20 @@ impl Worker {
                 }
 
                 let assigned = self.assign_aliases(&deployment, &project);
-                let assigned_urls = assigned.iter().map(|h| url_for(&self.config, h)).collect::<Vec<_>>().join("  ");
+                let assigned_full_urls: Vec<String> = assigned.iter().map(|h| url_for(&self.config, h)).collect();
+                let assigned_urls = assigned_full_urls.join("  ");
                 self.publish_note("info", &deployment.id, &format!("Deployment ready: {assigned_urls}"));
+
+                self.report_commit_status(
+                    &deployment,
+                    &project,
+                    &git_token,
+                    "success",
+                    "Deployment ready",
+                    assigned_full_urls.first().map(String::as_str).unwrap_or(&deployment.url),
+                )
+                .await;
+                self.comment_pr_ready(&deployment, &project, &git_token, &assigned_full_urls).await;
 
                 {
                     let conn = self.db.lock();
@@ -277,6 +310,15 @@ impl Worker {
             Err(message) => {
                 let aborted = cancel.is_cancelled();
                 self.publish_note("error", &deployment.id, &message);
+                self.report_commit_status(
+                    &deployment,
+                    &project,
+                    &git_token,
+                    if aborted { "error" } else { "failure" },
+                    if aborted { "Canceled" } else { "Build failed" },
+                    &url_for(&self.config, &deployment.url),
+                )
+                .await;
                 let conn = self.db.lock();
                 let _ = deployments::update(
                     &conn,
@@ -300,6 +342,57 @@ impl Worker {
                 );
                 Ok(())
             }
+        }
+    }
+
+    /// Best-effort GitHub feedback: a commit status check
+    /// (`pending`/`success`/`failure`/`error`) on the commit being deployed.
+    /// `create_commit_status` was ported from `apps/api`'s `github.ts`
+    /// alongside everything else but never actually called — see
+    /// docs/rust-api-migration-plan.md. Failing to reach GitHub never fails
+    /// the deployment itself.
+    async fn report_commit_status(
+        &self,
+        deployment: &Deployment,
+        project: &Project,
+        git_token: &Option<String>,
+        state: &str,
+        description: &str,
+        target_url: &str,
+    ) {
+        if project.repo_provider.as_deref() != Some("github") {
+            return;
+        }
+        let (Some(token), Some(full_name), Some(sha)) = (git_token, &project.repo_full_name, &deployment.commit_sha) else {
+            return;
+        };
+        if let Err(err) =
+            github::create_commit_status(&self.config.github.api_url, token, full_name, sha, state, target_url, description, "avail-deploy").await
+        {
+            logger::scoped("worker").warn(format!("GitHub commit status ({state}) failed for {}: {err}", deployment.id));
+        }
+    }
+
+    /// Best-effort "preview ready" comment on the pull request a preview
+    /// deployment was built for. `comment_on_pull_request` has the same
+    /// history as `report_commit_status` above.
+    async fn comment_pr_ready(&self, deployment: &Deployment, project: &Project, git_token: &Option<String>, urls: &[String]) {
+        if project.repo_provider.as_deref() != Some("github") {
+            return;
+        }
+        let (Some(token), Some(full_name), Some(pr_number)) = (git_token, &project.repo_full_name, deployment.pr_number) else {
+            return;
+        };
+        let sha = deployment.commit_sha.as_deref().unwrap_or("");
+        let short_sha = &sha[..sha.len().min(7)];
+        let body = format!(
+            "**Deploy Preview for _{}_ ready!**\n\nBuilt with Avail Deploy from commit {short_sha}.\n\n| Name | Status | Preview |\n| :--- | :--- | :--- |\n| **{}** | ✅ Ready | {} |",
+            project.name,
+            project.name,
+            urls.first().map(String::as_str).unwrap_or("—"),
+        );
+        if let Err(err) = github::comment_on_pull_request(&self.config.github.api_url, token, full_name, pr_number, &body).await {
+            logger::scoped("worker").warn(format!("GitHub PR comment failed for {}: {err}", deployment.id));
         }
     }
 

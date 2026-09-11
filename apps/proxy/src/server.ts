@@ -3,11 +3,13 @@ import http, {
   type IncomingMessage,
   type ServerResponse,
 } from 'node:http';
+import https from 'node:https';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { aliases, deployments, getDb, projects, requestLogs } from '@avail/db';
 import { config } from '@avail/shared/config';
 import { createLogger } from '@avail/shared/logger';
+import { ensureSelfSignedCert } from './tls.ts';
 import type {
   Deployment,
   DeploymentManifest,
@@ -404,7 +406,8 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
         deployment.id,
         dir,
         manifest,
-        'functions'
+        'functions',
+        fn
       );
       instance.lastUsedAt = Date.now();
       proxyRequest(req, res, instance.port, pathname, url.search, responseHeaders);
@@ -539,30 +542,44 @@ function recordRequest(
   }
 }
 
+/** Shared by both the HTTP and HTTPS listeners — same routing either way. */
+function requestListener(req: IncomingMessage, res: ServerResponse) {
+  const started = Date.now();
+  // `finish` does not fire for every response shape (a piped file stream is
+  // one), while `close` always does — and also covers a client that hangs
+  // up mid-response. recordRequest de-duplicates the two.
+  const done = () => {
+    log.debug(
+      `${req.method} ${hostname(req)}${req.url} -> ${res.statusCode} (${Date.now() - started}ms)`
+    );
+    recordRequest(req, res, started);
+  };
+  res.on('finish', done);
+  res.on('close', done);
+  handle(req, res).catch((err) => {
+    log.error('Unhandled proxy error:', err);
+    if (!res.headersSent) {
+      sendHtml(res, 500, errorPage(500, 'Internal proxy error.', String(err)));
+    } else if (!res.writableEnded) {
+      res.end();
+    }
+  });
+}
+
 export function createProxyServer() {
   getDb();
-  return http.createServer((req, res) => {
-    const started = Date.now();
-    // `finish` does not fire for every response shape (a piped file stream is
-    // one), while `close` always does — and also covers a client that hangs
-    // up mid-response. recordRequest de-duplicates the two.
-    const done = () => {
-      log.debug(
-        `${req.method} ${hostname(req)}${req.url} -> ${res.statusCode} (${Date.now() - started}ms)`
-      );
-      recordRequest(req, res, started);
-    };
-    res.on('finish', done);
-    res.on('close', done);
-    handle(req, res).catch((err) => {
-      log.error('Unhandled proxy error:', err);
-      if (!res.headersSent) {
-        sendHtml(res, 500, errorPage(500, 'Internal proxy error.', String(err)));
-      } else if (!res.writableEnded) {
-        res.end();
-      }
-    });
-  });
+  return http.createServer(requestListener);
+}
+
+/**
+ * A second listener on `config.proxyHttpsPort`, terminating TLS with a
+ * self-signed certificate — see `tls.ts` for what this is and isn't.
+ * Returns `null` (proxy stays HTTP-only) if `openssl` isn't available.
+ */
+export function createProxyHttpsServer(): https.Server | null {
+  const tls = ensureSelfSignedCert();
+  if (!tls) return null;
+  return https.createServer(tls, requestListener);
 }
 
 export function start(): void {
@@ -572,10 +589,16 @@ export function start(): void {
     log.info(`Deployment domains: *.${config.deploymentDomain}:${config.proxyPort}`);
   });
 
+  const httpsServer = createProxyHttpsServer();
+  httpsServer?.listen(config.proxyHttpsPort, '0.0.0.0', () => {
+    log.info(`Proxy also listening on https://localhost:${config.proxyHttpsPort} (self-signed)`);
+  });
+
   const shutdown = () => {
     log.info('Shutting down runtimes');
     runtimes.stopAll();
     server.close(() => process.exit(0));
+    httpsServer?.close();
     setTimeout(() => process.exit(0), 3000).unref();
   };
   process.on('SIGINT', shutdown);
