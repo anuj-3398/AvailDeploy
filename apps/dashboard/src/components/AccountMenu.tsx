@@ -103,6 +103,16 @@ export function AccountMenu({
             {user.name ? (
               <span className="small faint ellipsis">{user.email}</span>
             ) : null}
+            <span
+              className="small faint"
+              title={
+                user.role === 'owner'
+                  ? 'Owner — can delete any project and remove any domain'
+                  : "Member — can delete projects and domains you created yourself, not anyone else's"
+              }
+            >
+              {user.role === 'owner' ? '★ Owner' : 'Member'} of this workspace
+            </span>
           </div>
 
           <div className="account-row static">

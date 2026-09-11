@@ -51,6 +51,17 @@ export interface User {
   role: string;
 }
 
+/** Same shape as `User` — a separate type since it's a read-only listing of
+ * everyone in the workspace, not the signed-in user. */
+export interface Member {
+  id: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+  role: string;
+  createdAt: number;
+}
+
 export interface Comment {
   id: string;
   deploymentId: string;
@@ -130,6 +141,7 @@ export interface Project {
   autoDeploy: boolean;
   previewDeploys: boolean;
   productionUrl: string;
+  createdBy: { id: string; name: string | null; email: string } | null;
   createdAt: number;
   updatedAt: number;
   productionDeployment: Deployment | null;
@@ -222,6 +234,9 @@ export const api = {
       webhookUrl: string;
     }>('/api/system/info'),
   systemStatus: () => request<any>('/api/system/status'),
+  /** Everyone in the workspace and their role — role is workspace-wide,
+   * not per-project, so this is the closest thing to "who owns what". */
+  members: () => request<{ members: Member[] }>('/api/system/members'),
   frameworks: () =>
     request<{
       frameworks: {

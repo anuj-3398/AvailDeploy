@@ -9,11 +9,12 @@ use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
-use crate::auth::{require_owner, AuthUser};
+use crate::auth::{require_owner_or_creator, AuthUser};
+use crate::builder;
 use crate::config::Config;
 use crate::crypto::random_secret;
 use crate::db::types::Project;
-use crate::db::{aliases, deployments, events, now_ms, projects, request_logs};
+use crate::db::{aliases, deployments, events, now_ms, projects, request_logs, users};
 use crate::error::{AppError, AppResult};
 use crate::github;
 use crate::ids::{new_alias_id, new_project_id, slugify};
@@ -26,6 +27,7 @@ use crate::state::SharedState;
 pub fn serialize_project(conn: &Connection, cfg: &Config, project: &Project) -> Value {
     let production = deployments::current_production(conn, &project.id).ok().flatten();
     let latest = deployments::for_project(conn, &project.id, 1, 0).ok().and_then(|mut v| v.pop());
+    let creator = users::by_id(conn, &project.created_by).ok().flatten();
     let repo = project.repo_full_name.as_ref().map(|full_name| {
         let url = if project.repo_provider.as_deref() == Some("github") {
             format!("https://github.com/{full_name}")
@@ -55,6 +57,7 @@ pub fn serialize_project(conn: &Connection, cfg: &Config, project: &Project) -> 
         "repo": repo,
         "productionBranch": project.production_branch,
         "ignoreCommand": project.ignore_command,
+        "createdBy": creator.map(|u| json!({ "id": u.id, "name": u.name, "email": u.email })),
         "autoDeploy": project.auto_deploy != 0,
         "previewDeploys": project.preview_deploys != 0,
         "productionUrl": url_for(cfg, &format!("{}.{}", project.slug, cfg.deployment_domain)),
@@ -356,23 +359,29 @@ async fn patch_project(_user: AuthUser, State(state): State<SharedState>, Path(k
 }
 
 async fn delete_project(user: AuthUser, State(state): State<SharedState>, Path(key): Path<String>) -> AppResult<Json<Value>> {
-    require_owner(&user.user)?;
-    let conn = state.db.lock();
-    let project = require_project(&conn, &key)?;
-    for deployment in deployments::for_project(&conn, &project.id, 1000, 0)? {
-        let _ = std::fs::remove_dir_all(state.config.deployments_dir.join(&deployment.id));
-    }
-    projects::delete(&conn, &project.id)?;
-    events::record(
-        &conn,
-        events::NewEvent {
-            r#type: "project.deleted",
-            text: &format!("Deleted project {}", project.name),
-            project_id: None,
-            deployment_id: None,
-            user_id: Some(&user.user.id),
-        },
-    )?;
+    // The DB row is gone (and the response sent) before any disk cleanup
+    // starts — see the comment on the spawned task below for why.
+    let deployment_ids = {
+        let conn = state.db.lock();
+        let project = require_project(&conn, &key)?;
+        require_owner_or_creator(&user.user, &project.created_by)?;
+        let deployment_ids: Vec<String> = deployments::for_project(&conn, &project.id, 1000, 0)?.into_iter().map(|d| d.id).collect();
+        projects::delete(&conn, &project.id)?;
+        events::record(
+            &conn,
+            events::NewEvent {
+                r#type: "project.deleted",
+                text: &format!("Deleted project {}", project.name),
+                project_id: None,
+                deployment_id: None,
+                user_id: Some(&user.user.id),
+            },
+        )?;
+        deployment_ids
+    };
+
+    builder::spawn_deployment_cleanup(state.config.deployments_dir.clone(), deployment_ids);
+
     Ok(Json(json!({ "ok": true })))
 }
 
@@ -632,9 +641,9 @@ struct DomainParams {
 }
 
 async fn delete_domain(user: AuthUser, State(state): State<SharedState>, Path(params): Path<DomainParams>) -> AppResult<Json<Value>> {
-    require_owner(&user.user)?;
     let conn = state.db.lock();
     let project = require_project(&conn, &params.key)?;
+    require_owner_or_creator(&user.user, &project.created_by)?;
     let alias = aliases::by_domain(&conn, &params.domain)?.filter(|a| a.project_id == project.id);
     let Some(alias) = alias else {
         return Err(AppError::not_found("Domain not found"));

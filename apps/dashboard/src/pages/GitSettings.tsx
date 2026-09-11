@@ -1,9 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type Integration } from '../api.ts';
+import { api, ApiError, type Integration, type Member } from '../api.ts';
 import { Alert, Spinner, TimeAgo } from '../components/ui.tsx';
+
+function initials(value: string): string {
+  return value
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
 
 export function GitSettings() {
   const [integrations, setIntegrations] = useState<Integration[] | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -25,6 +36,7 @@ export function GitSettings() {
     setIntegrations(list.integrations);
     setInfo(systemInfo as any);
     api.systemStatus().then(setStatus).catch(() => {});
+    api.members().then((r) => setMembers(r.members)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -189,6 +201,40 @@ export function GitSettings() {
           </form>
         </div>
       )}
+
+      <div className="card">
+        <div className="card-head">
+          <h2>Team</h2>
+        </div>
+        <div className="card-body muted small">
+          Role is workspace-wide — the same for every project, not set per
+          project. The first person to ever sign in is the <strong>owner</strong>;
+          everyone else who signs in is a <strong>member</strong>. Deleting a
+          project or removing one of its custom domains needs either the
+          owner, or whoever originally created that specific project — a
+          member can't touch a project someone else on the workspace
+          created. Everything else — deploying, editing env vars,
+          connecting Git, commenting — is the same for both.
+        </div>
+        {members.length > 0 ? (
+          <div className="list">
+            {members.map((member) => (
+              <div key={member.id} className="list-item">
+                <span className="avatar tiny" aria-hidden>
+                  {initials(member.name ?? member.email)}
+                </span>
+                <div className="stack" style={{ flex: 1 }}>
+                  <strong>{member.name ?? member.email}</strong>
+                  <span className="small faint">{member.email}</span>
+                </div>
+                <span className={`btn sm ${member.role === 'owner' ? '' : 'ghost'}`}>
+                  {member.role === 'owner' ? '★ Owner' : 'Member'}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       <div className="card">
         <div className="card-head">

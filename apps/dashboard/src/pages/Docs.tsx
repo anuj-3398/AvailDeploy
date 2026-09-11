@@ -137,9 +137,13 @@ export function Docs() {
             webhooks, comment on deployments. The split only matters for two
             actions that can't be undone —{' '}
             <strong>deleting a project</strong> and{' '}
-            <strong>removing a custom domain</strong> — both owner-only. A
-            member who tries either gets a plain "Only the workspace owner
-            can do this" response rather than a partially-completed action.
+            <strong>removing a custom domain</strong>. Either needs the
+            owner, or specifically whoever created that project — a member
+            can always clean up their own project, but can't touch one
+            someone else on the workspace created. Anyone else who tries
+            either gets a plain "Only the workspace owner or whoever created
+            this project can do this" response rather than a
+            partially-completed action.
           </p>
 
           <Frame url="avail.localhost/projects/my-app/settings">
@@ -227,12 +231,12 @@ export function Docs() {
             Open the project, go to <strong>Settings</strong> → General, and
             use <strong>Delete project</strong> at the bottom. It removes the
             project, every deployment and all build artifacts —{' '}
-            <strong>this cannot be undone</strong>. Only the workspace{' '}
-            <strong>owner</strong> can do this — see{' '}
-            <strong>Access control</strong> above; a member sees the same
-            button but the request is refused. Removing a custom domain from
-            a project's <strong>Domains</strong> tab is owner-only the same
-            way.
+            <strong>this cannot be undone</strong>. Needs the workspace{' '}
+            <strong>owner</strong>, or whoever created this particular
+            project — see <strong>Access control</strong> above; anyone else
+            sees the same button but the request is refused, with the
+            reason shown right on the page. Removing a custom domain from a
+            project's <strong>Domains</strong> tab follows the same rule.
           </p>
 
           <Frame url="avail.localhost/projects/my-app/settings">
@@ -463,7 +467,7 @@ function DangerZoneMockup() {
         Removes the project, its deployments and all build artifacts. This
         cannot be undone.
         <br />
-        <span className="faint">Owner only.</span>
+        <span className="faint">Owner, or whoever created this project.</span>
       </div>
       <div className="card-foot">
         <span className="btn danger">Delete project</span>

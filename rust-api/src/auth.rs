@@ -145,6 +145,23 @@ pub fn require_owner(user: &User) -> Result<(), AppError> {
     }
 }
 
+/// Same as `require_owner`, but also lets whoever created the project in
+/// question act on it — "I made a mess, I can clean up my own mess" — so a
+/// member can delete a project (or remove a domain from one) they created
+/// themselves without needing the owner's involvement, while still being
+/// unable to touch a project someone else on the workspace created.
+pub fn require_owner_or_creator(user: &User, created_by: &str) -> Result<(), AppError> {
+    if user.role == "owner" || user.id == created_by {
+        Ok(())
+    } else {
+        Err(AppError::new(
+            StatusCode::FORBIDDEN,
+            "owner_required",
+            "Only the workspace owner or whoever created this project can do this",
+        ))
+    }
+}
+
 pub fn public_user(user: &User) -> Value {
     json!({
         "id": user.id,
