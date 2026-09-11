@@ -22,9 +22,9 @@ const log = createLogger('api');
 function ensureDirectories(): void {
   for (const dir of [
     config.dataDir,
-    config.buildsDir,
+    config.workspaceDir,
+    config.projectsDir,
     config.deploymentsDir,
-    config.reposDir,
     config.cacheDir,
   ]) {
     mkdirSync(dir, { recursive: true });
@@ -113,6 +113,13 @@ export async function start(): Promise<void> {
   log.info(`Sign-in restricted to: ${config.allowedEmailDomains.map((d) => `@${d}`).join(', ')}`);
   log.info(`Build executor: ${config.build.executor}`);
   log.info(`Data directory: ${config.dataDir}`);
+  log.info(`Build workspace: ${config.workspaceDir} (${config.workspaceReason})`);
+  if (config.build.executor === 'wsl' && !config.workspaceIsNative) {
+    log.warn(
+      'Builds run on a Windows drive mounted into WSL. Every dependency file ' +
+        'crosses the 9p bridge, which dominates build time.'
+    );
+  }
   if (dataDirIsNested()) {
     log.warn(
       'AVAIL_DATA_DIR is inside the platform repository. Builds will inherit ' +

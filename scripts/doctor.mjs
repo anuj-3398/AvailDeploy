@@ -78,6 +78,17 @@ try {
   fail('Data directory', `${config.dataDir} is not writable: ${err.message}`);
 }
 
+if (config.workspaceIsNative) {
+  ok('Build workspace', `${config.workspaceDir} (${config.workspaceReason})`);
+} else {
+  warn(
+    'Build workspace',
+    `${config.workspaceDir} — ${config.workspaceReason}. ` +
+      'Builds on a Windows drive cross the WSL 9p bridge for every dependency ' +
+      'file, which dominates build time.'
+  );
+}
+
 if (dataDirIsNested()) {
   fail(
     'Build isolation',

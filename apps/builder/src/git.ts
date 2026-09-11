@@ -24,6 +24,8 @@ export interface FetchOptions {
   signal?: AbortSignal;
   /** Full history instead of a shallow clone. */
   deep?: boolean;
+  /** Where to write the generated shell script (kept out of the checkout). */
+  scriptDir?: string;
 }
 
 /** Strips credentials so tokens never reach the build log. */
@@ -68,13 +70,23 @@ export async function fetchSource(options: FetchOptions): Promise<CommitInfo> {
       : '';
 
   const script = [
-    'rm -rf .git',
-    'git init -q .',
-    `git remote add origin ${shQuote(remote)}`,
+    // Reuse an existing checkout so the fetch is incremental and, more
+    // importantly, so node_modules and framework caches survive between
+    // builds. A fresh directory falls back to init + fetch.
+    'if [ -d .git ]; then',
+    `  git remote set-url origin ${shQuote(remote)} 2>/dev/null || git remote add origin ${shQuote(remote)}`,
+    'else',
+    '  rm -rf .git',
+    '  git init -q .',
+    `  git remote add origin ${shQuote(remote)}`,
+    'fi',
     credentialSetup,
     // Fetch the exact commit when we have one, else the branch tip.
     `git fetch -q ${depth} origin ${shQuote(target)} || git fetch -q ${depth} origin`,
-    'git checkout -q FETCH_HEAD',
+    'git checkout -q --force FETCH_HEAD',
+    // Drop files left by the previous commit. Ignored paths (node_modules,
+    // .next, …) are deliberately kept — that is the whole point of reuse.
+    'git clean -qfd -e node_modules',
     'git submodule update --init --recursive --depth 1 2>/dev/null || true',
     `git log -1 --pretty=format:'%H%n%an <%ae>%n%s' > ${shQuote('.avail-commit.txt')}`,
   ]
@@ -88,10 +100,11 @@ export async function fetchSource(options: FetchOptions): Promise<CommitInfo> {
     log,
     signal,
     label: 'fetch',
+    scriptDir: options.scriptDir,
   });
 
   // The script embeds credentials; remove it as soon as it has run.
-  const scriptPath = path.join(dir, '.avail-fetch.sh');
+  const scriptPath = path.join(options.scriptDir ?? dir, '.avail-fetch.sh');
   if (existsSync(scriptPath)) rmSync(scriptPath, { force: true });
 
   if (result.code !== 0) {

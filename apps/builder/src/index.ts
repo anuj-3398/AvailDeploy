@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { getFramework } from '@avail/frameworks';
 import { config } from '@avail/shared/config';
 import type {
   Deployment,
@@ -21,10 +20,10 @@ export { toWslPath, execPath } from './paths.ts';
 export type BuildPhase =
   | 'initializing'
   | 'cloning'
-  | 'restoring-cache'
   | 'installing'
   | 'building'
   | 'collecting'
+  | 'publishing'
   | 'done';
 
 export interface BuildInput {
@@ -53,13 +52,31 @@ export interface BuildOutput {
   durationMs: number;
 }
 
-/** Directory layout for one deployment on disk. */
+/** Directory layout for one published deployment. */
 export function deploymentPaths(deploymentId: string) {
   const dir = path.join(config.deploymentsDir, deploymentId);
   return {
     dir,
     src: path.join(dir, 'src'),
     manifest: path.join(dir, 'manifest.json'),
+  };
+}
+
+/**
+ * Long-lived build workspace for a project, reused by every build.
+ *
+ * Keeping the checkout, `node_modules` and the framework cache between builds
+ * turns a cold install into an incremental one — the single biggest win on a
+ * self-hosted builder. Builds of one project are serialized so they never
+ * share this directory concurrently.
+ */
+export function projectWorkspace(projectId: string) {
+  const dir = path.join(config.projectsDir, projectId);
+  return {
+    dir,
+    src: path.join(dir, 'src'),
+    /** Generated shell scripts, kept out of the git working tree. */
+    scripts: path.join(dir, 'scripts'),
   };
 }
 
@@ -128,56 +145,48 @@ export function systemEnv(
   return env;
 }
 
-function cacheArchive(projectId: string): string {
-  return path.join(config.cacheDir, `${projectId}.tar`);
-}
-
-/** Restores `node_modules` and the framework build cache from a previous run. */
-async function restoreCache(
-  projectId: string,
+/**
+ * Publishes the finished build as an immutable deployment directory.
+ *
+ * The copy is made with hard links (`cp -al`), so a 300 MB `node_modules`
+ * snapshot costs directory entries rather than 300 MB and a few minutes of
+ * I/O. Build tools replace files rather than rewriting them in place, so
+ * earlier snapshots keep pointing at the bytes they were built from.
+ *
+ * `.next/cache` is excluded — it is scratch space that later builds do mutate
+ * in place, and it is never served.
+ */
+async function snapshot(
   workDir: string,
-  log: LogSink,
-  signal: AbortSignal
-): Promise<boolean> {
-  const archive = cacheArchive(projectId);
-  if (!existsSync(archive)) return false;
-  const result = await run({
-    command: `tar -xf ${shQuote(execPath(archive))} -C . 2>/dev/null || true`,
-    cwd: workDir,
-    log: (level, text) => log(level === 'stdout' ? 'info' : level, text),
-    signal,
-    label: 'cache-restore',
-    timeoutMs: 5 * 60_000,
-  });
-  return result.code === 0;
-}
-
-/** Saves `node_modules` and the framework build cache for the next build. */
-async function saveCache(
-  projectId: string,
-  workDir: string,
-  frameworkSlug: string | null,
+  destDir: string,
+  scriptDir: string,
   log: LogSink,
   signal: AbortSignal
 ): Promise<void> {
-  mkdirSync(config.cacheDir, { recursive: true });
-  const archive = cacheArchive(projectId);
-  const cachePattern = getFramework(frameworkSlug)?.cachePattern ?? null;
-  const extra = cachePattern ? cachePattern.replace(/\/\*\*$/, '') : null;
-  const targets = ['node_modules', ...(extra ? [extra] : [])]
-    .filter((t) => existsSync(path.join(workDir, t)))
-    .map((t) => shQuote(t));
-  if (!targets.length) return;
+  const from = shQuote(execPath(workDir));
+  const to = shQuote(execPath(destDir));
 
-  await run({
-    command: `tar -cf ${shQuote(execPath(archive))} ${targets.join(' ')} 2>/dev/null || true`,
-    cwd: workDir,
-    log: () => {},
+  const result = await run({
+    command: [
+      `rm -rf ${to}`,
+      `mkdir -p ${to}`,
+      // Hard-link the tree; fall back to a real copy on filesystems that
+      // cannot link (a different device, or a non-GNU cp).
+      `cp -al ${from}/. ${to}/ 2>/dev/null || cp -a ${from}/. ${to}/`,
+      // Scratch and history are not part of the artifact.
+      `rm -rf ${to}/.next/cache ${to}/.git ${to}/.turbo`,
+    ].join('\n'),
+    cwd: path.dirname(scriptDir),
+    log: (level, text) => log(level === 'stdout' ? 'info' : level, text),
     signal,
-    label: 'cache-save',
-    timeoutMs: 5 * 60_000,
+    label: 'snapshot',
+    scriptDir,
+    timeoutMs: 10 * 60_000,
   });
-  log('info', 'Build cache saved');
+
+  if (result.code !== 0) {
+    throw new Error('Could not publish the build output');
+  }
 }
 
 /**
@@ -188,11 +197,24 @@ export async function runBuild(input: BuildInput): Promise<BuildOutput> {
   const { deployment, project, log, signal, onPhase } = input;
   const started = Date.now();
   const paths = deploymentPaths(deployment.id);
+  const workspace = projectWorkspace(project.id);
 
   onPhase?.('initializing');
-  mkdirSync(paths.src, { recursive: true });
+  const firstBuild = !existsSync(path.join(workspace.src, '.git'));
+  mkdirSync(workspace.src, { recursive: true });
+  mkdirSync(workspace.scripts, { recursive: true });
+
   log('info', `Deploying ${project.name} (${deployment.target})`);
-  log('info', `Build executor: ${config.build.executor}`);
+  log(
+    'info',
+    `Build executor: ${config.build.executor}` +
+      (config.build.executor === 'wsl'
+        ? ` · workspace: ${config.workspaceIsNative ? 'WSL-native' : 'Windows drive (slow)'}`
+        : '')
+  );
+  if (!firstBuild) {
+    log('info', 'Reusing the project workspace (incremental install and cache)');
+  }
 
   /* --------------------------------------------------------------- clone */
   onPhase?.('cloning');
@@ -207,17 +229,18 @@ export async function runBuild(input: BuildInput): Promise<BuildOutput> {
     repoUrl,
     ref: deployment.branch || project.production_branch,
     sha: deployment.commit_sha,
-    dir: paths.src,
+    dir: workspace.src,
     token: input.gitToken,
     log,
     signal,
+    scriptDir: workspace.scripts,
   });
   log('info', `Checked out ${commit.sha.slice(0, 7)} — ${commit.message}`);
 
   /* ------------------------------------------------------------ settings */
-  const rootConfig = readProjectConfig(paths.src);
+  const rootConfig = readProjectConfig(workspace.src);
   const resolved = resolveSettings({
-    repoDir: paths.src,
+    repoDir: workspace.src,
     project,
     configFile: project.root_directory ? undefined : rootConfig,
   });
@@ -236,16 +259,14 @@ export async function runBuild(input: BuildInput): Promise<BuildOutput> {
   const prelude = toolchainPrelude(settings.nodeVersion);
 
   /* ------------------------------------------------------------- install */
-  if (existsSync(path.join(workDir, 'package.json'))) {
-    onPhase?.('restoring-cache');
-    if (await restoreCache(project.id, workDir, log, signal)) {
-      log('info', 'Restored build cache');
-    }
-  }
-
   if (settings.installCommand) {
     onPhase?.('installing');
-    log('info', 'Installing dependencies');
+    log(
+      'info',
+      existsSync(path.join(workDir, 'node_modules'))
+        ? 'Installing dependencies (incremental)'
+        : 'Installing dependencies'
+    );
     const result = await run({
       command: `${prelude}\n${settings.installCommand}`,
       cwd: workDir,
@@ -256,6 +277,7 @@ export async function runBuild(input: BuildInput): Promise<BuildOutput> {
       log,
       signal,
       label: 'install',
+      scriptDir: workspace.scripts,
     });
     if (result.code !== 0) {
       throw new Error(
@@ -279,6 +301,7 @@ export async function runBuild(input: BuildInput): Promise<BuildOutput> {
       log,
       signal,
       label: 'build',
+      scriptDir: workspace.scripts,
     });
     if (result.code !== 0) {
       throw new Error(
@@ -299,7 +322,13 @@ export async function runBuild(input: BuildInput): Promise<BuildOutput> {
     for (const fn of functions) log('info', `  ${fn.route}  ->  ${fn.file}`);
   }
 
-  let serveMode = settings.serveMode;
+  /** Where a workspace path ends up inside the published deployment. */
+  const inSnapshot = (abs: string): string => {
+    const rel = path.relative(workspace.src, abs).split(path.sep).join('/');
+    return rel ? `src/${rel}` : 'src';
+  };
+
+  const serveMode = settings.serveMode;
   let staticDir: string | null = null;
   let outputPath: string | null = null;
 
@@ -311,7 +340,7 @@ export async function runBuild(input: BuildInput): Promise<BuildOutput> {
     );
     if (!outputDirectory) {
       // No build output: serve the working directory itself (plain static site).
-      staticDir = path.relative(paths.dir, workDir).split(path.sep).join('/');
+      staticDir = inSnapshot(workDir);
       log(
         'warn',
         `No output directory found${
@@ -319,8 +348,7 @@ export async function runBuild(input: BuildInput): Promise<BuildOutput> {
         } — serving the root directory`
       );
     } else {
-      const abs = path.join(workDir, outputDirectory);
-      staticDir = path.relative(paths.dir, abs).split(path.sep).join('/');
+      staticDir = inSnapshot(path.join(workDir, outputDirectory));
       log('info', `Output directory: ${outputDirectory}`);
     }
     outputPath = staticDir;
@@ -330,12 +358,18 @@ export async function runBuild(input: BuildInput): Promise<BuildOutput> {
         `Framework "${settings.framework}" needs a start command. Set "startCommand" in avail.json or add a "start" script.`
       );
     }
-    outputPath = path.relative(paths.dir, workDir).split(path.sep).join('/');
+    outputPath = inSnapshot(workDir);
     log('info', `Serve mode: server (${settings.startCommand})`);
   }
 
-  await saveCache(project.id, workDir, settings.framework, log, signal).catch(
-    () => {}
+  /* ------------------------------------------------------------ publish */
+  onPhase?.('publishing');
+  const snapshotStarted = Date.now();
+  mkdirSync(paths.dir, { recursive: true });
+  await snapshot(workspace.src, paths.src, workspace.scripts, log, signal);
+  log(
+    'info',
+    `Published deployment artifacts in ${((Date.now() - snapshotStarted) / 1000).toFixed(1)}s`
   );
 
   const manifest: DeploymentManifest = {
@@ -347,10 +381,8 @@ export async function runBuild(input: BuildInput): Promise<BuildOutput> {
     serveMode,
     startCommand: settings.startCommand,
     staticDir,
-    functionsDir: functions.length
-      ? path.relative(paths.dir, workDir).split(path.sep).join('/')
-      : null,
-    serverDir: path.relative(paths.dir, workDir).split(path.sep).join('/'),
+    functionsDir: functions.length ? inSnapshot(workDir) : null,
+    serverDir: inSnapshot(workDir),
     functions,
     config: configFile,
     env: {
@@ -362,12 +394,6 @@ export async function runBuild(input: BuildInput): Promise<BuildOutput> {
     createdAt: Date.now(),
   };
   writeFileSync(paths.manifest, JSON.stringify(manifest, null, 2));
-
-  // Build scripts can contain credentials; they are not part of the artifact.
-  for (const name of ['.avail-install.sh', '.avail-build.sh', '.avail-fetch.sh']) {
-    rmSync(path.join(workDir, name), { force: true });
-    rmSync(path.join(paths.src, name), { force: true });
-  }
 
   const durationMs = Date.now() - started;
   log('info', `Build completed in ${(durationMs / 1000).toFixed(1)}s`);

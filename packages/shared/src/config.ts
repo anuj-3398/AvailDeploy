@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -53,6 +54,83 @@ export function dataDirIsNested(): boolean {
   return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
+const buildExecutor = (process.env.BUILD_EXECUTOR ??
+  (process.platform === 'win32' ? 'wsl' : 'local')) as 'local' | 'wsl';
+const wslDistro = process.env.WSL_DISTRO ?? 'Ubuntu';
+
+/**
+ * Where builds actually happen.
+ *
+ * On Windows the build runs inside WSL, and a workspace on a `/mnt/<drive>`
+ * mount crosses the 9p filesystem bridge for every file. `npm install` writes
+ * tens of thousands of small files, so that boundary — not the compiler —
+ * dominates build time. Putting the workspace on the WSL-native filesystem
+ * and reaching it from Windows through `\\wsl.localhost` is several times
+ * faster; the SQLite database stays on the Windows disk, where file locking
+ * behaves.
+ *
+ * The probe result is cached in the data directory so it costs one `wsl.exe`
+ * call on first boot, not one per process.
+ */
+function resolveWorkspaceDir(): { dir: string; native: boolean; reason: string } {
+  if (process.env.AVAIL_WORKSPACE_DIR) {
+    return {
+      dir: path.resolve(process.env.AVAIL_WORKSPACE_DIR),
+      native: true,
+      reason: 'AVAIL_WORKSPACE_DIR',
+    };
+  }
+  if (buildExecutor !== 'wsl' || process.platform !== 'win32') {
+    return { dir: dataDir, native: true, reason: 'executor runs on this filesystem' };
+  }
+  if (!bool(process.env.WSL_NATIVE_WORKSPACE, true)) {
+    return { dir: dataDir, native: false, reason: 'disabled by WSL_NATIVE_WORKSPACE' };
+  }
+
+  const cacheFile = path.join(dataDir, 'workspace.json');
+  try {
+    const cached = JSON.parse(readFileSync(cacheFile, 'utf8')) as {
+      dir: string;
+      distro: string;
+    };
+    if (cached.distro === wslDistro && existsSync(cached.dir)) {
+      return { dir: cached.dir, native: true, reason: 'cached WSL-native workspace' };
+    }
+  } catch {
+    /* no usable cache; probe below */
+  }
+
+  try {
+    const home = spawnSync(
+      'wsl.exe',
+      ['-d', wslDistro, '--', 'sh', '-lc', 'echo $HOME'],
+      { encoding: 'utf8', windowsHide: true, timeout: 30_000 }
+    );
+    const wslHome = String(home.stdout ?? '').trim().split('\n').pop() ?? '';
+    if (home.status !== 0 || !wslHome.startsWith('/')) {
+      return { dir: dataDir, native: false, reason: 'could not read WSL $HOME' };
+    }
+
+    const unc = `\\\\wsl.localhost\\${wslDistro}${wslHome.replace(/\//g, '\\')}\\.avail-deploy`;
+    mkdirSync(unc, { recursive: true });
+    const probe = path.join(unc, '.write-probe');
+    writeFileSync(probe, 'ok');
+    rmSync(probe, { force: true });
+
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(cacheFile, JSON.stringify({ dir: unc, distro: wslDistro }, null, 2));
+    return { dir: unc, native: true, reason: 'WSL-native workspace' };
+  } catch (err) {
+    return {
+      dir: dataDir,
+      native: false,
+      reason: `WSL-native workspace unavailable (${(err as Error).message})`,
+    };
+  }
+}
+
+const workspace = resolveWorkspaceDir();
+
 export const config = {
   root: ROOT,
   env: process.env.NODE_ENV ?? 'development',
@@ -76,13 +154,17 @@ export const config = {
   deploymentDomain: process.env.DEPLOYMENT_DOMAIN ?? 'avail.localhost',
   deploymentScheme: process.env.DEPLOYMENT_SCHEME ?? 'http',
 
-  // Storage
+  // Storage — metadata stays on the host disk, builds go to the workspace.
   dataDir,
   dbFile: process.env.AVAIL_DB_FILE ?? path.join(dataDir, 'avail.db'),
-  buildsDir: path.join(dataDir, 'builds'),
-  deploymentsDir: path.join(dataDir, 'deployments'),
-  reposDir: path.join(dataDir, 'repos'),
-  cacheDir: path.join(dataDir, 'cache'),
+  workspaceDir: workspace.dir,
+  workspaceIsNative: workspace.native,
+  workspaceReason: workspace.reason,
+  /** Persistent per-project checkouts, reused across builds. */
+  projectsDir: path.join(workspace.dir, 'projects'),
+  /** Immutable per-deployment snapshots. */
+  deploymentsDir: path.join(workspace.dir, 'deployments'),
+  cacheDir: path.join(workspace.dir, 'cache'),
 
   // Auth
   secret: process.env.AVAIL_SECRET ?? 'dev-insecure-secret-change-me',
@@ -114,9 +196,8 @@ export const config = {
   // Builds
   build: {
     /** `local` runs commands with the host shell, `wsl` runs them inside WSL. */
-    executor: (process.env.BUILD_EXECUTOR ??
-      (process.platform === 'win32' ? 'wsl' : 'local')) as 'local' | 'wsl',
-    wslDistro: process.env.WSL_DISTRO ?? 'Ubuntu',
+    executor: buildExecutor,
+    wslDistro,
     concurrency: num(process.env.BUILD_CONCURRENCY, 2),
     timeoutMs: num(process.env.BUILD_TIMEOUT_MINUTES, 30) * 60 * 1000,
     /** Keep this many finished deployments per project on disk. */

@@ -109,9 +109,11 @@ dependencies. `npm run doctor` fails loudly if `AVAIL_DATA_DIR` is misplaced.
 Each deployment gets an immutable directory:
 
 ```
-~/.avail-deploy/deployments/dpl_xxxx/
-├── manifest.json     # what the proxy needs to serve this deployment
-└── src/              # the checked-out repository, built in place
+<workspace>/
+├── projects/<projectId>/src/      # long-lived checkout, reused every build
+└── deployments/<deploymentId>/
+    ├── manifest.json              # what the proxy needs to serve this build
+    └── src/                       # hard-linked snapshot of the workspace
 ```
 
 Install runs with `NODE_ENV=development` (package managers drop
@@ -270,24 +272,51 @@ knowing:
 | --- | --- | --- |
 | `ALLOWED_EMAIL_DOMAINS` | `availproject.org` | Who may sign in |
 | `AVAIL_SECRET` | insecure default | Signing + encryption key |
-| `AVAIL_DATA_DIR` | `~/.avail-deploy` | Database, builds, artifacts |
+| `AVAIL_DATA_DIR` | `~/.avail-deploy` | Database and platform metadata |
+| `AVAIL_WORKSPACE_DIR` | WSL-native, auto-detected | Where builds run and artifacts live |
 | `BUILD_EXECUTOR` | `wsl` on Windows | `wsl` or `local` |
 | `DEPLOYMENT_DOMAIN` | `avail.localhost` | Wildcard base for deployment URLs |
 | `BUILD_CONCURRENCY` | `2` | Parallel builds |
 | `GITHUB_POLL_INTERVAL_SECONDS` | `60` | Fallback when webhooks cannot reach this host |
 | `SMTP_URL` | unset | Real delivery for sign-in codes |
 
-### Faster builds on Windows
+## Build performance
 
-Builds on a `/mnt/<drive>` mount are slow — `npm install` crosses the Windows
-filesystem boundary for every file. Moving the workspace onto the WSL-native
-filesystem is several times faster; keep SQLite on the Windows disk, since
-network filesystems and SQLite locking do not mix:
+Three things dominate build time on a self-hosted builder, and all three are
+handled automatically.
 
-```dotenv
-AVAIL_DATA_DIR=\\wsl.localhost\Ubuntu\home\you\.avail-deploy
-AVAIL_DB_FILE=C:\Users\you\.avail-deploy\avail.db
-```
+**1. The workspace filesystem.** On Windows the build runs inside WSL. A
+workspace on a `/mnt/<drive>` mount crosses the 9p bridge for every file, and
+`npm install` writes tens of thousands of small files — so the filesystem
+boundary, not the compiler, sets the pace. The workspace is therefore
+auto-detected to the WSL-native filesystem
+(`\\wsl.localhost\<distro>\home\<user>\.avail-deploy`), while SQLite stays on
+the Windows disk where file locking behaves. Override with
+`AVAIL_WORKSPACE_DIR`, or opt out with `WSL_NATIVE_WORKSPACE=false`.
+
+**2. Workspace reuse.** Each project keeps one long-lived checkout under
+`projects/<projectId>`. Builds `git fetch` into it rather than cloning fresh,
+so `node_modules` and the framework cache (`.next/cache`, …) survive between
+builds and installs become incremental. Builds of one project are serialized
+so they never share that directory concurrently.
+
+**3. Publishing artifacts.** Deployments are snapshotted with hard links
+(`cp -al`), not copied or tarred. A 325 MB `node_modules` snapshot costs
+directory entries instead of minutes of I/O, and keeping twenty deployments
+costs close to nothing. `.next/cache` is excluded, since later builds mutate
+it in place.
+
+Measured on a real Next.js 16 project (325 MB of dependencies, 10,406 files):
+
+| Phase | Before | After (cold) | After (warm) |
+| --- | ---: | ---: | ---: |
+| `npm install` | 239.5s | 28.2s | 2.1s |
+| `next build` | 91.9s | 12.9s | 6.3s |
+| Publish artifacts | 142.0s (tar) | 2.1s (hard link) | 1.7s |
+| **Total** | **475.8s** | **45.3s** | **12.2s** |
+| First request (SSR cold boot) | 23.6s | 2.3s | 2.3s |
+
+"Cold" is a fresh workspace; "warm" is a rebuild that reuses it.
 
 ---
 

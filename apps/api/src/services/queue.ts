@@ -12,10 +12,10 @@ const log = createLogger('queue');
 const PHASE_STATE: Partial<Record<BuildPhase, Deployment['state']>> = {
   initializing: 'INITIALIZING',
   cloning: 'INITIALIZING',
-  'restoring-cache': 'BUILDING',
   installing: 'BUILDING',
   building: 'BUILDING',
   collecting: 'UPLOADING',
+  publishing: 'UPLOADING',
 };
 
 function publish(deployment: Deployment): void {
@@ -34,6 +34,8 @@ function publish(deployment: Deployment): void {
 class BuildQueue {
   private pending: string[] = [];
   private running = new Map<string, AbortController>();
+  /** Projects with a build in flight; one build per project at a time. */
+  private runningProjects = new Set<string>();
   private draining = false;
 
   get status() {
@@ -83,13 +85,25 @@ class BuildQueue {
         this.running.size < config.build.concurrency &&
         this.pending.length > 0
       ) {
-        const id = this.pending.shift()!;
+        // Builds of one project share its workspace, so they must not run
+        // concurrently. Look past a blocked project to a different one.
+        const index = this.pending.findIndex((id) => {
+          const projectId = deployments.byId(id)?.project_id;
+          return !projectId || !this.runningProjects.has(projectId);
+        });
+        if (index === -1) break;
+
+        const id = this.pending.splice(index, 1)[0];
+        const projectId = deployments.byId(id)?.project_id;
         const controller = new AbortController();
         this.running.set(id, controller);
+        if (projectId) this.runningProjects.add(projectId);
+
         void this.execute(id, controller)
           .catch((err) => log.error(`Build ${id} crashed:`, err))
           .finally(() => {
             this.running.delete(id);
+            if (projectId) this.runningProjects.delete(projectId);
             releaseLogCounter(id);
             queueMicrotask(() => this.drain());
           });
