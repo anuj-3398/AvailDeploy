@@ -13,10 +13,18 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'git', label: 'Git' },
 ];
 
+const TAB_IDS = new Set<string>(TABS.map((t) => t.id));
+
 export function ProjectSettings() {
-  const { slug = '' } = useParams();
+  const { slug = '', tab: tabParam } = useParams();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('general');
+  // The tab lives in the URL so the sidebar can deep-link into Environment
+  // Variables or Domains, and so back/forward moves between them.
+  const tab: Tab = TAB_IDS.has(tabParam ?? '') ? (tabParam as Tab) : 'general';
+  const setTab = (next: Tab) =>
+    navigate(
+      `/projects/${slug}/settings${next === 'general' ? '' : `/${next}`}`
+    );
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -49,34 +57,28 @@ export function ProjectSettings() {
 
   if (!project) {
     return (
-      <div className="container">
+      <>
         <Alert kind="error">{error}</Alert>
         {!error ? <Spinner label="Loading…" /> : null}
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="container">
-      <div className="page-head">
-        <div className="stack">
-          <Link className="small muted" to={`/projects/${slug}`}>
-            ← {project.name}
-          </Link>
-          <h1>Project Settings</h1>
-        </div>
+    <>
+      <div className="page-title">
+        <h1>{TABS.find((t) => t.id === tab)?.label ?? 'Settings'}</h1>
       </div>
 
       <div className="tabs">
         {TABS.map((item) => (
-          <a
+          <Link
             key={item.id}
-            href={`#${item.id}`}
+            to={`/projects/${slug}/settings${item.id === 'general' ? '' : `/${item.id}`}`}
             className={tab === item.id ? 'active' : ''}
-            onClick={() => setTab(item.id)}
           >
             {item.label}
-          </a>
+          </Link>
         ))}
       </div>
 
@@ -92,7 +94,7 @@ export function ProjectSettings() {
       {tab === 'git' ? (
         <GitTab project={project} slug={slug} onSave={save} />
       ) : null}
-    </div>
+    </>
   );
 }
 

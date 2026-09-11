@@ -517,6 +517,101 @@ export const events = {
     all(`SELECT * FROM events ORDER BY created_at DESC LIMIT ?`, limit),
 };
 
+/* ----------------------------------------------------------- request logs */
+
+export interface RequestLog {
+  id: number;
+  project_id: string;
+  deployment_id: string | null;
+  ts: number;
+  method: string;
+  host: string;
+  path: string;
+  status: number;
+  duration_ms: number;
+  kind: string;
+  message: string | null;
+}
+
+export const requestLogs = {
+  record: (row: Omit<RequestLog, 'id'>) =>
+    run(
+      `INSERT INTO request_logs
+         (project_id, deployment_id, ts, method, host, path, status, duration_ms, kind, message)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      row.project_id,
+      row.deployment_id,
+      row.ts,
+      row.method,
+      row.host,
+      row.path,
+      row.status,
+      row.duration_ms,
+      row.kind,
+      row.message
+    ),
+
+  /**
+   * Newest-first page of a project's requests. `sinceId` powers live tailing:
+   * the client passes the highest id it has seen and gets only what is new.
+   */
+  forProject: (
+    projectId: string,
+    options: {
+      limit?: number;
+      sinceId?: number;
+      search?: string;
+      status?: 'all' | 'error';
+      deploymentId?: string | null;
+    } = {}
+  ) => {
+    const { limit = 100, sinceId, search, status = 'all', deploymentId } = options;
+    const where: string[] = ['project_id = ?'];
+    const params: unknown[] = [projectId];
+
+    if (sinceId !== undefined) {
+      where.push('id > ?');
+      params.push(sinceId);
+    }
+    if (deploymentId) {
+      where.push('deployment_id = ?');
+      params.push(deploymentId);
+    }
+    if (status === 'error') where.push('status >= 400');
+    if (search) {
+      where.push('(path LIKE ? OR host LIKE ? OR IFNULL(message, ' + "''" + ') LIKE ?)');
+      const like = `%${search}%`;
+      params.push(like, like, like);
+    }
+
+    return all<RequestLog>(
+      `SELECT * FROM request_logs WHERE ${where.join(' AND ')}
+       ORDER BY id DESC LIMIT ?`,
+      ...params,
+      Math.min(limit, 500)
+    );
+  },
+
+  /** Keeps the table bounded; called opportunistically after writes. */
+  prune: (projectId: string, keep: number) =>
+    run(
+      `DELETE FROM request_logs
+       WHERE project_id = ?
+         AND id <= COALESCE(
+           (SELECT id FROM request_logs WHERE project_id = ?
+            ORDER BY id DESC LIMIT 1 OFFSET ?), 0)`,
+      projectId,
+      projectId,
+      keep
+    ),
+
+  countForProject: (projectId: string) =>
+    get<{ c: number }>(
+      'SELECT COUNT(*) AS c FROM request_logs WHERE project_id = ?',
+      projectId
+    )?.c ?? 0,
+};
+
 export const webhookDeliveries = {
   record: (row: {
     id: string;

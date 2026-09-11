@@ -5,7 +5,7 @@ import http, {
 } from 'node:http';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { aliases, deployments, getDb, projects } from '@avail/db';
+import { aliases, deployments, getDb, projects, requestLogs } from '@avail/db';
 import { config } from '@avail/shared/config';
 import { createLogger } from '@avail/shared/logger';
 import type {
@@ -278,6 +278,10 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
 
   const { deployment, project, basePath } = target;
 
+  const span = trace(req);
+  span.projectId = deployment.project_id;
+  span.deploymentId = deployment.id;
+
   const baseHeaders: Record<string, string> = {
     'x-avail-id': deployment.id,
     'x-avail-target': deployment.target,
@@ -285,6 +289,11 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   };
 
   if (deployment.state !== 'READY') {
+    span.kind = 'error';
+    span.message =
+      deployment.state === 'ERROR' || deployment.state === 'CANCELED'
+        ? (deployment.error ?? 'Deployment failed to build')
+        : `Deployment is ${deployment.state}`;
     if (deployment.state === 'ERROR' || deployment.state === 'CANCELED') {
       sendHtml(
         res,
@@ -307,6 +316,8 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
 
   const manifest = loadManifest(deployment.id);
   if (!manifest) {
+    span.kind = 'error';
+    span.message = 'Build artifacts are no longer available';
     sendHtml(
       res,
       502,
@@ -335,6 +346,8 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   /* redirects */
   const redirect = findRedirect(projectConfig.redirects, pathname, url.search);
   if (redirect) {
+    span.kind = 'redirect';
+    span.message = `-> ${redirect.location}`;
     res.statusCode = redirect.statusCode;
     res.setHeader('location', basePath + redirect.location);
     for (const [key, value] of Object.entries(responseHeaders)) {
@@ -352,6 +365,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
 
   /* server-mode deployments proxy everything to the framework server */
   if (manifest.serveMode === 'server') {
+    span.kind = 'server';
     try {
       const instance = await runtimes.acquire(
         deployment.id,
@@ -362,6 +376,8 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
       instance.lastUsedAt = Date.now();
       proxyRequest(req, res, instance.port, pathname, url.search, responseHeaders);
     } catch (err) {
+      span.kind = 'error';
+      span.message = firstLine(err);
       log.error(`Could not start runtime for ${deployment.id}:`, err);
       sendHtml(
         res,
@@ -382,6 +398,7 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
     (entry) => matchFunctionRoute(entry.route, pathname) !== null
   );
   if (fn) {
+    span.kind = 'function';
     try {
       const instance = await runtimes.acquire(
         deployment.id,
@@ -392,6 +409,8 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
       instance.lastUsedAt = Date.now();
       proxyRequest(req, res, instance.port, pathname, url.search, responseHeaders);
     } catch (err) {
+      span.kind = 'error';
+      span.message = firstLine(err);
       log.error(`Function runtime failed for ${deployment.id}:`, err);
       sendHtml(
         res,
@@ -446,15 +465,95 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
 
 /* ---------------------------------------------------------------- server */
 
+/**
+ * Per-request context the handler fills in so the access log can attribute the
+ * request to a project and say how it was served.
+ */
+interface RequestTrace {
+  projectId: string | null;
+  deploymentId: string | null;
+  kind: string;
+  message: string | null;
+  /** Guards against the double signal from `finish` + `close`. */
+  recorded?: boolean;
+}
+
+const traces = new WeakMap<IncomingMessage, RequestTrace>();
+
+/** Error messages can carry a captured log tail; the log column wants one line. */
+function firstLine(err: unknown): string {
+  return String((err as Error)?.message ?? err).split(/\r?\n/)[0];
+}
+
+function trace(req: IncomingMessage): RequestTrace {
+  let value = traces.get(req);
+  if (!value) {
+    value = {
+      projectId: null,
+      deploymentId: null,
+      kind: 'static',
+      message: null,
+    };
+    traces.set(req, value);
+  }
+  return value;
+}
+
+/** Prune every so often rather than on every request. */
+let requestsSincePrune = 0;
+const PRUNE_EVERY = 200;
+const KEEP_PER_PROJECT = 2000;
+
+function recordRequest(
+  req: IncomingMessage,
+  res: ServerResponse,
+  startedAt: number
+): void {
+  const current = traces.get(req);
+  if (!current?.projectId) return; // Platform routes and unmatched hosts.
+  if (current.recorded) return;
+  current.recorded = true;
+
+  const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+  try {
+    requestLogs.record({
+      project_id: current.projectId,
+      deployment_id: current.deploymentId,
+      ts: startedAt,
+      method: req.method ?? 'GET',
+      host: hostname(req),
+      path: url.pathname + url.search,
+      status: res.statusCode,
+      duration_ms: Date.now() - startedAt,
+      kind: current.kind,
+      message: current.message,
+    });
+
+    if (++requestsSincePrune >= PRUNE_EVERY) {
+      requestsSincePrune = 0;
+      requestLogs.prune(current.projectId, KEEP_PER_PROJECT);
+    }
+  } catch (err) {
+    // Never let logging break a response, but do not drop it silently either.
+    log.warn('Could not record request log:', (err as Error).message);
+  }
+}
+
 export function createProxyServer() {
   getDb();
   return http.createServer((req, res) => {
     const started = Date.now();
-    res.on('finish', () => {
+    // `finish` does not fire for every response shape (a piped file stream is
+    // one), while `close` always does — and also covers a client that hangs
+    // up mid-response. recordRequest de-duplicates the two.
+    const done = () => {
       log.debug(
         `${req.method} ${hostname(req)}${req.url} -> ${res.statusCode} (${Date.now() - started}ms)`
       );
-    });
+      recordRequest(req, res, started);
+    };
+    res.on('finish', done);
+    res.on('close', done);
     handle(req, res).catch((err) => {
       log.error('Unhandled proxy error:', err);
       if (!res.headersSent) {

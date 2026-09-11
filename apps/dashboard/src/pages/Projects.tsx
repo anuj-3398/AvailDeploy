@@ -8,7 +8,7 @@ import {
   TimeAgo,
 } from '../components/ui.tsx';
 
-export function Overview() {
+export function Projects() {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [query, setQuery] = useState('');
@@ -74,7 +74,7 @@ export function Overview() {
     <div className="container wide">
       <div className="page-head">
         <div className="stack">
-          <h1>Overview</h1>
+          <h1>Projects</h1>
           <span className="sub">
             {projects.length} project{projects.length === 1 ? '' : 's'}
           </span>

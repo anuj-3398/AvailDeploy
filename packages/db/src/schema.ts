@@ -160,6 +160,26 @@ CREATE TABLE IF NOT EXISTS webhook_deliveries (
   created_at  INTEGER NOT NULL
 );
 
+-- One row per request served by the proxy. Written by the proxy process and
+-- read by the API, which is why WAL mode matters. Pruned to a bounded number
+-- of rows per project so this cannot grow without limit.
+CREATE TABLE IF NOT EXISTS request_logs (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id    TEXT NOT NULL,
+  deployment_id TEXT,
+  ts            INTEGER NOT NULL,
+  method        TEXT NOT NULL,
+  host          TEXT NOT NULL,
+  path          TEXT NOT NULL,
+  status        INTEGER NOT NULL,
+  duration_ms   INTEGER NOT NULL,
+  /** static | function | server | redirect | error */
+  kind          TEXT NOT NULL,
+  message       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_request_logs_project ON request_logs(project_id, id DESC);
+CREATE INDEX IF NOT EXISTS idx_request_logs_deployment ON request_logs(deployment_id, id DESC);
+
 CREATE TABLE IF NOT EXISTS events (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   type       TEXT NOT NULL,

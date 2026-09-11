@@ -6,6 +6,7 @@ import {
   events,
   integrations,
   projects,
+  requestLogs,
 } from '@avail/db';
 import { config } from '@avail/shared/config';
 import { randomSecret, tryDecrypt } from '@avail/shared/crypto';
@@ -348,6 +349,53 @@ export async function projectRoutes(app: FastifyInstance): Promise<void> {
       .forProject(project.id, limit, offset)
       .filter((d) => !request.query.target || d.target === request.query.target);
     return { deployments: rows.map(serializeDeployment) };
+  });
+
+  /* ---------------------------------------------------------- access logs */
+
+  /**
+   * Requests served by the proxy for this project.
+   *
+   * The proxy writes these from its own process, so the dashboard tails them
+   * by passing back the highest id it has seen rather than by subscribing to
+   * an in-process event bus.
+   */
+  app.get<{
+    Params: { key: string };
+    Querystring: {
+      limit?: string;
+      sinceId?: string;
+      q?: string;
+      status?: string;
+      deploymentId?: string;
+    };
+  }>('/api/projects/:key/logs', async (request) => {
+    const project = requireProject(request.params.key);
+    const sinceRaw = Number(request.query.sinceId);
+
+    const rows = requestLogs.forProject(project.id, {
+      limit: Math.min(Number(request.query.limit ?? 100) || 100, 500),
+      sinceId: Number.isFinite(sinceRaw) && sinceRaw >= 0 ? sinceRaw : undefined,
+      search: request.query.q?.trim() || undefined,
+      status: request.query.status === 'error' ? 'error' : 'all',
+      deploymentId: request.query.deploymentId || null,
+    });
+
+    return {
+      logs: rows.map((row) => ({
+        id: row.id,
+        ts: row.ts,
+        method: row.method,
+        host: row.host,
+        path: row.path,
+        status: row.status,
+        durationMs: row.duration_ms,
+        kind: row.kind,
+        message: row.message,
+        deploymentId: row.deployment_id,
+      })),
+      total: requestLogs.countForProject(project.id),
+    };
   });
 
   /* ------------------------------------------------------------ webhooks */

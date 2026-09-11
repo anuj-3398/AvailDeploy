@@ -158,6 +158,20 @@ export interface LogLine {
   text: string;
 }
 
+/** One request served by the proxy, as shown on the Logs tab. */
+export interface RequestLog {
+  id: number;
+  ts: number;
+  method: string;
+  host: string;
+  path: string;
+  status: number;
+  durationMs: number;
+  kind: string;
+  message: string | null;
+  deploymentId: string | null;
+}
+
 export const api = {
   /* auth */
   authConfig: () =>
@@ -247,6 +261,28 @@ export const api = {
     request<{ deployments: Deployment[] }>(
       `/api/projects/${key}/deployments?limit=${limit}`
     ),
+  /** Access logs for a project; `sinceId` returns only newer rows. */
+  projectLogs: (
+    key: string,
+    options: {
+      limit?: number;
+      sinceId?: number;
+      q?: string;
+      status?: 'error';
+      deploymentId?: string;
+    } = {}
+  ) => {
+    const params = new URLSearchParams();
+    if (options.limit) params.set('limit', String(options.limit));
+    if (options.sinceId !== undefined) params.set('sinceId', String(options.sinceId));
+    if (options.q) params.set('q', options.q);
+    if (options.status) params.set('status', options.status);
+    if (options.deploymentId) params.set('deploymentId', options.deploymentId);
+    return request<{ logs: RequestLog[]; total: number }>(
+      `/api/projects/${key}/logs?${params}`
+    );
+  },
+
   domains: (key: string) =>
     request<{
       domains: {
