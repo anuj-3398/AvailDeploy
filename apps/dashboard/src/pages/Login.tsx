@@ -43,7 +43,19 @@ function GitHubMark() {
   );
 }
 
+/**
+ * Mirrors the server's `isEmailAllowed` so the domain is checked as the user
+ * types instead of only when the form is submitted. The server still enforces
+ * it — this is feedback, not a gate.
+ */
+function domainAllowed(email: string, domains: string[]): boolean {
+  const at = email.lastIndexOf('@');
+  if (at === -1) return false;
+  return domains.includes(email.slice(at + 1).toLowerCase().trim());
+}
+
 export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -69,23 +81,30 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
   }, []);
 
   const domains = config?.allowedDomains ?? ['availproject.org'];
+  const typed = email.trim();
+  // Only complain once they have typed something that looks like an address.
+  const domainReady = typed.includes('@') && typed.split('@')[1]?.length > 0;
+  const domainOk = domainAllowed(typed, domains);
+  const showDomainError = domainReady && !domainOk;
 
   async function requestCode(event: React.FormEvent) {
     event.preventDefault();
     setError('');
     setBusy(true);
     try {
-      const result = await api.requestCode(email.trim());
+      const result = await api.requestCode(typed, mode);
       setStep('code');
       setNotice(
         result.code
           ? `Email delivery is not configured, so here is your code: ${result.code}`
-          : `We sent a 6-digit code to ${email.trim()}.`
+          : `We sent a 6-digit code to ${typed}.`
       );
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : 'Could not request a code'
-      );
+      const apiError = err instanceof ApiError ? err : null;
+      setError(apiError ? apiError.message : 'Could not request a code');
+      // The account either exists or it does not — offer the other tab.
+      if (apiError?.code === 'account_not_found') setMode('signup');
+      if (apiError?.code === 'account_exists') setMode('login');
     } finally {
       setBusy(false);
     }
@@ -112,8 +131,36 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
           <span style={{ marginRight: 8 }}>▲</span>Avail Deploy
         </h1>
         <p className="sub">
-          Sign in with your {domains.map((d) => `@${d}`).join(' or ')} address
+          {mode === 'login' ? 'Log in with' : 'Create an account with'} your{' '}
+          {domains.map((d) => `@${d}`).join(' or ')} address
         </p>
+
+        {step === 'email' ? (
+          <div className="segmented" role="tablist">
+            <button
+              role="tab"
+              aria-selected={mode === 'login'}
+              className={mode === 'login' ? 'active' : ''}
+              onClick={() => {
+                setMode('login');
+                setError('');
+              }}
+            >
+              Log in
+            </button>
+            <button
+              role="tab"
+              aria-selected={mode === 'signup'}
+              className={mode === 'signup' ? 'active' : ''}
+              onClick={() => {
+                setMode('signup');
+                setError('');
+              }}
+            >
+              Sign up
+            </button>
+          </div>
+        ) : null}
 
         <Alert kind="error">{error}</Alert>
 
@@ -123,22 +170,38 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
               <label htmlFor="email">Email address</label>
               <input
                 id="email"
-                className="input"
+                className={`input${showDomainError ? ' invalid' : ''}`}
                 type="email"
                 autoFocus
                 required
                 autoComplete="email"
+                aria-invalid={showDomainError}
+                aria-describedby="domain-hint"
                 placeholder={`you@${domains[0]}`}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
+              <span
+                id="domain-hint"
+                className={showDomainError ? 'hint invalid' : 'hint'}
+              >
+                {showDomainError
+                  ? `Only ${domains.map((d) => `@${d}`).join(' or ')} addresses are allowed`
+                  : mode === 'signup'
+                    ? 'Anyone on the domain can create an account.'
+                    : ' '}
+              </span>
             </div>
             <button
               className="btn primary"
               style={{ width: '100%' }}
-              disabled={busy || !email}
+              disabled={busy || !typed || !domainOk}
             >
-              {busy ? 'Sending…' : 'Continue with Email'}
+              {busy
+                ? 'Sending…'
+                : mode === 'signup'
+                  ? 'Sign up with Email'
+                  : 'Continue with Email'}
             </button>
           </form>
         ) : (

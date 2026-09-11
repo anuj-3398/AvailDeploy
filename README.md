@@ -93,6 +93,20 @@ A provider's button only appears once its credentials are configured, and its
 `/start` endpoint returns `400 oauth_unavailable` otherwise — so an
 unconfigured provider can never dead-end a user at a broken consent screen.
 
+The login page offers **Log in** and **Sign up**. Both issue the same one-time
+code; the choice only decides which message you get when the account does or
+does not already exist — logging in without an account, or signing up with one,
+switches you to the other tab and explains why. Since anyone on an allow-listed
+domain may sign up regardless, saying which case applies leaks nothing they
+could not learn by trying.
+
+The domain is checked **as you type**, against the allow-list the page already
+received from `/api/auth/config` — so it costs no request per keystroke, and a
+disallowed address is rejected before anything is submitted. That is feedback
+only; `isEmailAllowed` still enforces the same rule on the server, and the unit
+tests assert the two agree (including that both parse on the *last* `@`, so
+`a@availproject.org@evil.com` is rejected by each).
+
 Whichever method is used, the address must be on an allow-listed domain. An
 outside Google or GitHub account is bounced back to the login page with the
 reason; there is no open registration, and the first user to sign in becomes

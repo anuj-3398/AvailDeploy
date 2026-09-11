@@ -168,10 +168,10 @@ export const api = {
       devEcho: boolean;
       mailDelivery: string;
     }>('/api/auth/config'),
-  requestCode: (email: string) =>
-    request<{ ok: boolean; delivered: boolean; code?: string }>(
+  requestCode: (email: string, intent: 'login' | 'signup' = 'login') =>
+    request<{ ok: boolean; delivered: boolean; intent: string; code?: string }>(
       '/api/auth/login',
-      { method: 'POST', ...json({ email }) }
+      { method: 'POST', ...json({ email, intent }) }
     ),
   verifyCode: (email: string, code: string) =>
     request<{ user: User }>('/api/auth/verify', {

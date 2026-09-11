@@ -68,47 +68,77 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     mailDelivery: config.smtpUrl ? 'smtp' : 'console',
   }));
 
-  /** Step 1 — request a one-time code. */
-  app.post<{ Body: { email?: string } }>('/api/auth/login', async (request) => {
-    const email = normalizeEmail(request.body?.email ?? '');
-    if (!email || !email.includes('@')) {
-      throw new HttpError(400, 'A valid email address is required', 'invalid_email');
-    }
-    if (!isEmailAllowed(email)) {
-      throw new HttpError(
-        403,
-        `Sign-in is restricted to ${config.allowedEmailDomains
-          .map((d) => `@${d}`)
-          .join(' and ')} addresses`,
-        'domain_not_allowed'
-      );
-    }
-    throttle(email);
+  /**
+   * Step 1 — request a one-time code.
+   *
+   * `intent` only decides which message the caller gets when the account does
+   * or does not already exist; both paths issue the same code. Because anyone
+   * on an allow-listed domain may sign up anyway, telling them which case they
+   * are in leaks nothing they could not discover by trying.
+   */
+  app.post<{ Body: { email?: string; intent?: string } }>(
+    '/api/auth/login',
+    async (request) => {
+      const email = normalizeEmail(request.body?.email ?? '');
+      const intent = request.body?.intent === 'signup' ? 'signup' : 'login';
 
-    const code = generateLoginCode();
-    loginCodes.create({
-      id: id('code'),
-      email,
-      code_hash: hashCode(code),
-      expires_at: Date.now() + config.loginCodeTtlMs,
-    });
-
-    const { delivered } = await sendMail(loginCodeMail(email, code)).catch(
-      (err) => {
-        log.error('Mail delivery failed:', err.message);
-        return { delivered: false };
+      if (!email || !email.includes('@')) {
+        throw new HttpError(400, 'A valid email address is required', 'invalid_email');
       }
-    );
+      if (!isEmailAllowed(email)) {
+        throw new HttpError(
+          403,
+          `Sign-in is restricted to ${config.allowedEmailDomains
+            .map((d) => `@${d}`)
+            .join(' and ')} addresses`,
+          'domain_not_allowed'
+        );
+      }
 
-    return {
-      ok: true,
-      email,
-      delivered,
-      expiresInMs: config.loginCodeTtlMs,
-      // Without SMTP configured the code has nowhere to go but the response.
-      code: !delivered && config.authDevEcho ? code : undefined,
-    };
-  });
+      const existing = users.byEmail(email);
+      if (intent === 'login' && !existing) {
+        throw new HttpError(
+          404,
+          `No account yet for ${email}. Switch to Sign up to create one.`,
+          'account_not_found'
+        );
+      }
+      if (intent === 'signup' && existing) {
+        throw new HttpError(
+          409,
+          `${email} already has an account. Switch to Log in.`,
+          'account_exists'
+        );
+      }
+
+      throttle(email);
+
+      const code = generateLoginCode();
+      loginCodes.create({
+        id: id('code'),
+        email,
+        code_hash: hashCode(code),
+        expires_at: Date.now() + config.loginCodeTtlMs,
+      });
+
+      const { delivered } = await sendMail(loginCodeMail(email, code)).catch(
+        (err) => {
+          log.error('Mail delivery failed:', err.message);
+          return { delivered: false };
+        }
+      );
+
+      return {
+        ok: true,
+        email,
+        intent,
+        delivered,
+        expiresInMs: config.loginCodeTtlMs,
+        // Without SMTP configured the code has nowhere to go but the response.
+        code: !delivered && config.authDevEcho ? code : undefined,
+      };
+    }
+  );
 
   /** Step 2 — exchange the code for a session. */
   app.post<{ Body: { email?: string; code?: string; client?: string } }>(

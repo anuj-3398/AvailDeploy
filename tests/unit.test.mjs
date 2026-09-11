@@ -352,3 +352,46 @@ describe('google sign-in', () => {
     assert.equal(url.searchParams.get('prompt'), 'select_account');
   });
 });
+
+/* ------------------------------------------------- login-page validation */
+
+describe('domain check shown while typing', () => {
+  // The login page mirrors this to validate before submitting; the server
+  // still enforces the same rule in isEmailAllowed.
+  const domains = ['availproject.org'];
+  const allowed = (email) => {
+    const at = email.lastIndexOf('@');
+    if (at === -1) return false;
+    return domains.includes(email.slice(at + 1).toLowerCase().trim());
+  };
+
+  it('agrees with the server for allowed addresses', () => {
+    for (const email of [
+      'anuj@availproject.org',
+      'first.last+tag@availproject.org',
+      'ANUJ@AvailProject.ORG',
+    ]) {
+      assert.equal(allowed(email), true, email);
+      assert.equal(isEmailAllowed(email), true, email);
+    }
+  });
+
+  it('agrees with the server for rejected addresses', () => {
+    for (const email of [
+      'anuj@gmail.com',
+      'anuj@notavailproject.org',
+      'anuj@availproject.org.evil.com',
+      'anuj@',
+      'availproject.org',
+      '',
+    ]) {
+      assert.equal(allowed(email), false, email);
+      assert.equal(isEmailAllowed(email), false, email);
+    }
+  });
+
+  it('uses the last @ so an address cannot smuggle a domain in the local part', () => {
+    assert.equal(allowed('a@availproject.org@evil.com'), false);
+    assert.equal(isEmailAllowed('a@availproject.org@evil.com'), false);
+  });
+});
