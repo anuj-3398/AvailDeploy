@@ -11,7 +11,7 @@ any address on that domain is allowed in.
 ```
 ┌──────────────┐      ┌──────────────────┐      ┌──────────────────┐
 │  Dashboard   │─────▶│   Control plane  │─────▶│  Build executor  │
-│  React SPA   │ HTTP │  Fastify + SQLite│ spawn│   WSL or local   │
+│  React SPA   │ HTTP │  Rust + SQLite   │ spawn│   WSL or local   │
 │   :3000      │◀ SSE │      :3001       │      │  git → install → │
 └──────────────┘      └────────┬─────────┘      │      build       │
                                │                └────────┬─────────┘
@@ -124,6 +124,20 @@ URI. When exactly one domain is allow-listed it is passed as Google's `hd`
 hint, so Workspace users land on their work account instead of an account
 chooser full of personal ones.
 
+**GitHub setup:** create an OAuth App at
+[github.com/settings/applications/new](https://github.com/settings/applications/new)
+with homepage URL `http://localhost:3000` and authorization callback URL
+`http://localhost:3001/api/auth/github/callback`, then set `GITHUB_CLIENT_ID`
+and `GITHUB_CLIENT_SECRET`. Unlike Google, GitHub is identity **and**
+repository access in one step: signing in with GitHub attaches that same
+account for cloning private repos, registering webhooks and reporting build
+status — no separate connect step. Someone who signed up with email or
+Google instead gets a **Connect with GitHub OAuth** button on
+**Settings → Git** to add it afterward, using the exact same OAuth flow
+(`intent=connect` instead of `intent=signin` — the only difference is
+whether it also starts a session or just attaches to the one you already
+have).
+
 The first user to sign in becomes the workspace **owner**; everyone else on the
 domain joins as a **member**. Both can create, build, and edit projects the
 same way — the owner/member split only gates the destructive, hard-to-undo
@@ -132,8 +146,10 @@ actions: deleting a project and removing a custom domain. Everything else
 
 ### Deploy something
 
-1. **Git → Personal access token** — paste a GitHub token with `repo` and
-   `admin:repo_hook`, or use OAuth if you configured `GITHUB_CLIENT_ID`.
+1. **Settings → Git → Connect with GitHub OAuth** (if `GITHUB_CLIENT_ID` is
+   configured — see [Sign-in methods](#sign-in-methods) above), or paste a
+   personal access token with `repo` and `admin:repo_hook` scopes if it
+   isn't. Signing in with GitHub in the first place skips this step entirely.
 2. **Add New** — pick a repository (or paste a git URL or a local path).
 3. The first production deployment starts immediately; logs stream live.
 4. **Git → Create webhook on GitHub** so later pushes deploy on their own. If

@@ -56,8 +56,11 @@ export function Docs() {
             <li>
               <strong>Connect Git.</strong> Open the account menu's{' '}
               <strong>Settings</strong> (or the top bar's <strong>Git</strong>{' '}
-              link) and paste a GitHub personal access token, or use GitHub
-              OAuth if it's configured.
+              link) and click <strong>Connect with GitHub OAuth</strong> — or,
+              if that's not set up on this install, paste a personal access
+              token instead (there's a link for that right below the OAuth
+              button). Signing in with GitHub in the first place skips this
+              step entirely — it's already connected.
             </li>
             <li>
               Click <strong>Add New</strong> on the All Projects page, or{' '}
@@ -79,9 +82,20 @@ export function Docs() {
             </li>
           </ol>
 
-          <Frame url="avail.localhost/new">
-            <NewProjectMockup />
-          </Frame>
+          <div className="docs-two-up">
+            <div>
+              <Frame url="avail.localhost/settings/git">
+                <GitConnectMockup />
+              </Frame>
+              <p className="docs-caption">Settings → Git</p>
+            </div>
+            <div>
+              <Frame url="avail.localhost/new">
+                <NewProjectMockup />
+              </Frame>
+              <p className="docs-caption">Add New</p>
+            </div>
+          </div>
         </section>
 
         <section className="docs-section">
@@ -244,7 +258,9 @@ export function Docs() {
           <h2>Account menu</h2>
           <p className="sub">
             The avatar in the top-right corner opens theme (system, light or
-            dark), this Docs page, and Sign out.
+            dark), <strong>Home Page</strong> (the Avail Project site) and
+            this <strong>Docs</strong> page — both open in a new tab — and{' '}
+            <strong>Sign out</strong>.
           </p>
 
           <Frame url="account">
@@ -325,6 +341,31 @@ function SwitcherMockup() {
       </div>
       <div className="switcher-create">
         <span aria-hidden>+</span> Create Project
+      </div>
+    </div>
+  );
+}
+
+function GitConnectMockup() {
+  return (
+    <div className="stack" style={{ gap: 14 }}>
+      <div className="card" style={{ margin: 0 }}>
+        <div className="card-head">
+          <h2>Connected accounts</h2>
+        </div>
+        <div className="card-body muted small">
+          No GitHub account is connected yet.
+        </div>
+        <div className="card-foot">
+          <span className="btn accent">Connect with GitHub OAuth</span>
+        </div>
+      </div>
+      <div className="card" style={{ margin: 0 }}>
+        <div className="card-body" style={{ padding: 12 }}>
+          <span className="btn ghost sm">
+            Use a personal access token instead
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -510,6 +551,7 @@ function AccountMenuMockup() {
           <span>☾</span>
         </div>
       </div>
+      <div className="account-row">🏠 Home Page</div>
       <div className="account-row">📄 Docs</div>
       <div className="account-row danger">⇥ Sign out</div>
     </div>
