@@ -81,6 +81,11 @@ export function ProjectSwitcher({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
+        {current ? (
+          <span className="switcher-mark small" aria-hidden>
+            {current.name[0]?.toUpperCase()}
+          </span>
+        ) : null}
         <span className="switcher-name">{current?.name ?? 'All Projects'}</span>
         <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden fill="none">
           <path
@@ -122,6 +127,9 @@ export function ProjectSwitcher({
                   onMouseEnter={() => setHighlight(index)}
                   onClick={() => choose(project)}
                 >
+                  <span className="switcher-mark small" aria-hidden>
+                    {project.name[0]?.toUpperCase()}
+                  </span>
                   <span className="switcher-item-name">{project.name}</span>
                   {project.id === current?.id ? (
                     <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden fill="none">
