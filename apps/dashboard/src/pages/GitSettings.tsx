@@ -51,7 +51,7 @@ export function GitSettings() {
   }
 
   return (
-    <div className="container">
+    <>
       <div className="page-head">
         <div className="stack">
           <h1>Git Integration</h1>
@@ -203,6 +203,6 @@ export function GitSettings() {
           </dl>
         </div>
       </div>
-    </div>
+    </>
   );
 }

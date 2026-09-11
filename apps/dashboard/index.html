@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
     <title>Avail Deploy</title>
+    <script>
+      // Applied before first paint so switching themes never flashes the
+      // wrong one. theme.ts owns this value at runtime; kept in sync here.
+      (function () {
+        try {
+          var stored = localStorage.getItem('avail:theme');
+          if (stored === 'light' || stored === 'dark') {
+            document.documentElement.setAttribute('data-theme', stored);
+          }
+        } catch (err) {
+          /* storage unavailable — falls back to the system preference */
+        }
+      })();
+    </script>
     <link rel="icon" href="/avail-logo.png" />
     <link rel="apple-touch-icon" href="/avail-logo.png" />
   </head>

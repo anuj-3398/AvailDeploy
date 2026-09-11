@@ -172,6 +172,12 @@ export interface RequestLog {
   deploymentId: string | null;
 }
 
+/** A request log row from the workspace-wide feed, attributed to its project. */
+export interface WorkspaceRequestLog extends RequestLog {
+  projectSlug: string;
+  projectName: string;
+}
+
 export const api = {
   /* auth */
   authConfig: () =>
@@ -338,6 +344,24 @@ export const api = {
   /* deployments */
   deployments: (limit = 25) =>
     request<{ deployments: Deployment[] }>(`/api/deployments?limit=${limit}`),
+  /** Access logs across every project; `sinceId` returns only newer rows. */
+  allLogs: (
+    options: {
+      limit?: number;
+      sinceId?: number;
+      q?: string;
+      status?: 'error';
+    } = {}
+  ) => {
+    const params = new URLSearchParams();
+    if (options.limit) params.set('limit', String(options.limit));
+    if (options.sinceId !== undefined) params.set('sinceId', String(options.sinceId));
+    if (options.q) params.set('q', options.q);
+    if (options.status) params.set('status', options.status);
+    return request<{ logs: WorkspaceRequestLog[]; total: number }>(
+      `/api/logs?${params}`
+    );
+  },
   deployment: (id: string) =>
     request<{ deployment: Deployment; isBuilding: boolean }>(
       `/api/deployments/${id}`

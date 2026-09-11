@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
-import { buildLogs, deployments, projects } from '@avail/db';
+import { buildLogs, deployments, projects, requestLogs } from '@avail/db';
 import { removeDeploymentDir } from '@avail/builder';
 import { TERMINAL_STATES } from '@avail/shared/types';
 import { HttpError, requireAuth, resolveUser } from '../lib/auth.ts';
@@ -40,6 +40,47 @@ export async function deploymentRoutes(app: FastifyInstance): Promise<void> {
       const limit = Math.min(Number(request.query.limit ?? 25) || 25, 100);
       return {
         deployments: deployments.recent(limit).map(serializeDeployment),
+      };
+    }
+  );
+
+  /**
+   * Requests served by the proxy across every project — the workspace-wide
+   * counterpart of `/api/projects/:key/logs`.
+   */
+  app.get<{
+    Querystring: { limit?: string; sinceId?: string; q?: string; status?: string };
+  }>(
+    '/api/logs',
+    { preHandler: requireAuth },
+    async (request) => {
+      const sinceRaw = Number(request.query.sinceId);
+      const search = request.query.q?.trim() || undefined;
+      const status = request.query.status === 'error' ? 'error' : 'all';
+
+      const rows = requestLogs.recent({
+        limit: Math.min(Number(request.query.limit ?? 100) || 100, 500),
+        sinceId: Number.isFinite(sinceRaw) && sinceRaw >= 0 ? sinceRaw : undefined,
+        search,
+        status,
+      });
+
+      return {
+        logs: rows.map((row) => ({
+          id: row.id,
+          ts: row.ts,
+          method: row.method,
+          host: row.host,
+          path: row.path,
+          status: row.status,
+          durationMs: row.duration_ms,
+          kind: row.kind,
+          message: row.message,
+          deploymentId: row.deployment_id,
+          projectSlug: row.project_slug,
+          projectName: row.project_name,
+        })),
+        total: requestLogs.countAll({ search, status }),
       };
     }
   );
