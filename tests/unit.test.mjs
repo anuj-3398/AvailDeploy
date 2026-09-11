@@ -290,7 +290,10 @@ describe('serverless function discovery', () => {
 
 describe('executor', () => {
   it('converts Windows paths for WSL', () => {
-    assert.equal(paths.toWslPath('D:\\Avail\\vercel2\\data'), '/mnt/d/Avail/vercel2/data');
+    assert.equal(
+      paths.toWslPath('D:\\Projects\\my-app\\data'),
+      '/mnt/d/Projects/my-app/data'
+    );
     assert.equal(
       paths.toWslPath('\\\\wsl.localhost\\Ubuntu\\home\\me\\data'),
       '/home/me/data'

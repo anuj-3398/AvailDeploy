@@ -4,7 +4,7 @@ import { config } from '@avail/shared/config';
 /**
  * Converts a Windows path to the path WSL sees.
  *
- *   `D:\Avail\vercel2\data`                  ->  `/mnt/d/Avail/vercel2/data`
+ *   `D:\Projects\my-app\data`                ->  `/mnt/d/Projects/my-app/data`
  *   `\\wsl.localhost\Ubuntu\home\me\data`    ->  `/home/me/data`
  *
  * The UNC form matters for performance: a build on the WSL-native filesystem
