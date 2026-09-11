@@ -21,6 +21,7 @@ import {
   upsertUser,
 } from '../lib/auth.ts';
 import { github } from '../lib/github.ts';
+import { google } from '../lib/google.ts';
 import { loginCodeMail, sendMail } from '../lib/mailer.ts';
 
 const log = createLogger('auth');
@@ -40,7 +41,7 @@ function throttle(email: string): void {
   requestTimes.set(email, recent);
 }
 
-/** Short-lived signed state for the GitHub OAuth round trip. */
+/** Short-lived signed state shared by every OAuth round trip. */
 function oauthState(intent: string): string {
   const nonce = `${intent}:${Date.now()}`;
   return `${Buffer.from(nonce).toString('base64url')}.${hmac(nonce, 'oauth')}`;
@@ -62,6 +63,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     allowedDomains: config.allowedEmailDomains,
     emailSignIn: true,
     githubSignIn: Boolean(config.github.clientId && config.github.clientSecret),
+    googleSignIn: google.configured,
     devEcho: config.authDevEcho,
     mailDelivery: config.smtpUrl ? 'smtp' : 'console',
   }));
@@ -238,6 +240,62 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       if (!user) return fail('Sign in before connecting GitHub');
       saveIntegration(user.id, profile, token);
       return reply.redirect(`${config.dashboardUrl}/settings/git?connected=1`);
+    }
+  );
+
+  /* ------------------------------------------------------- Google OAuth */
+
+  const googleRedirectUri = `${config.apiUrl}/api/auth/google/callback`;
+
+  /** Google is identity only — it grants no repository access. */
+  app.get('/api/auth/google/start', async (_request, reply) => {
+    if (!google.configured) {
+      throw new HttpError(
+        400,
+        'Google sign-in is not configured',
+        'oauth_unavailable'
+      );
+    }
+    return reply.redirect(
+      google.authorizeUrl(googleRedirectUri, oauthState('signin'))
+    );
+  });
+
+  app.get<{ Querystring: { code?: string; state?: string; error?: string } }>(
+    '/api/auth/google/callback',
+    async (request, reply) => {
+      const { code, state, error } = request.query;
+      const fail = (message: string) =>
+        reply.redirect(
+          `${config.dashboardUrl}/login?error=${encodeURIComponent(message)}`
+        );
+
+      if (error) return fail(`Google sign-in was cancelled (${error})`);
+      if (!code || !state) return fail('Missing OAuth response');
+      if (!verifyOauthState(state)) return fail('OAuth state expired — try again');
+
+      let identity;
+      try {
+        identity = await google.exchangeCode(code, googleRedirectUri);
+      } catch (err) {
+        return fail((err as Error).message);
+      }
+
+      if (!isEmailAllowed(identity.email)) {
+        return fail(
+          `${identity.email} is not ${config.allowedEmailDomains
+            .map((d) => `an @${d}`)
+            .join(' or ')} address`
+        );
+      }
+
+      const user = upsertUser(identity.email, {
+        name: identity.name,
+        avatar_url: identity.picture,
+      });
+      startSession(reply, user, request.headers['user-agent']);
+      log.info(`${user.email} signed in via Google`);
+      return reply.redirect(`${config.dashboardUrl}/`);
     }
   );
 }

@@ -182,6 +182,12 @@ export const config = {
   smtpUrl: process.env.SMTP_URL ?? null,
   mailFrom: process.env.MAIL_FROM ?? 'Avail Deploy <deploy@availproject.org>',
 
+  // Google sign-in (identity only — no repository access)
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID ?? null,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? null,
+  },
+
   // GitHub
   github: {
     clientId: process.env.GITHUB_CLIENT_ID ?? null,

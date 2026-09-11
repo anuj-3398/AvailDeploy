@@ -164,6 +164,7 @@ export const api = {
     request<{
       allowedDomains: string[];
       githubSignIn: boolean;
+      googleSignIn: boolean;
       devEcho: boolean;
       mailDelivery: string;
     }>('/api/auth/config'),

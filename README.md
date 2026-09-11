@@ -79,6 +79,32 @@ Open the dashboard and sign in with any `@availproject.org` address. Without
 SMTP configured the one-time code is shown directly in the UI and printed to the
 API log, so local setup needs no mail server.
 
+### Sign-in methods
+
+Three methods, all gated on the same email domain allow-list:
+
+| Method | Setup | Notes |
+| --- | --- | --- |
+| **Email code** | none | Always available. A 6-digit code, hashed at rest, valid 10 minutes, 5 attempts. Delivered by SMTP when `SMTP_URL` is set, otherwise shown in the UI. |
+| **Google** | `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` | Identity only. OIDC authorization-code flow; the ID token's `iss`, `aud`, `exp` and `email_verified` claims are all checked. |
+| **GitHub** | `GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET` | Also attaches the account for repository access, so one click both signs in and connects Git. |
+
+A provider's button only appears once its credentials are configured, and its
+`/start` endpoint returns `400 oauth_unavailable` otherwise — so an
+unconfigured provider can never dead-end a user at a broken consent screen.
+
+Whichever method is used, the address must be on an allow-listed domain. An
+outside Google or GitHub account is bounced back to the login page with the
+reason; there is no open registration, and the first user to sign in becomes
+the workspace owner.
+
+**Google setup:** create an OAuth 2.0 Client ID of type *Web application* in the
+[Google Cloud console](https://console.cloud.google.com/apis/credentials) and
+add `http://localhost:3001/api/auth/google/callback` as an authorised redirect
+URI. When exactly one domain is allow-listed it is passed as Google's `hd`
+hint, so Workspace users land on their work account instead of an account
+chooser full of personal ones.
+
 The first user to sign in becomes the workspace **owner**; everyone else on the
 domain joins as a **member**.
 
@@ -298,6 +324,8 @@ knowing:
 | `DEPLOYMENT_DOMAIN` | `avail.localhost` | Wildcard base for deployment URLs |
 | `BUILD_CONCURRENCY` | `2` | Parallel builds |
 | `GITHUB_POLL_INTERVAL_SECONDS` | `60` | Fallback when webhooks cannot reach this host |
+| `GOOGLE_CLIENT_ID` / `_SECRET` | unset | Enables "Continue with Google" |
+| `GITHUB_CLIENT_ID` / `_SECRET` | unset | Enables "Continue with GitHub" |
 | `SMTP_URL` | unset | Real delivery for sign-in codes |
 
 ## Build performance
