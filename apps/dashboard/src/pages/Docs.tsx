@@ -26,7 +26,7 @@ export function Docs() {
           <h2>Dashboard layout</h2>
           <p className="sub">
             Two shells share the same sidebar shape. The workspace{' '}
-            <strong>home</strong> (opened from the <strong>Avail Deploy</strong>{' '}
+            <strong>home</strong> (opened from the <strong>Avail Harbor</strong>{' '}
             logo, or the project switcher's <strong>All Projects</strong>{' '}
             entry) has <strong>All Projects</strong> and{' '}
             <strong>My Projects</strong> (the same list, filtered to what you

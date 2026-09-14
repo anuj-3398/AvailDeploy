@@ -259,7 +259,7 @@ if (rustServiceNames.length > 0) {
   }
 }
 
-console.log(`Starting Avail Deploy: ${services.map((s) => s.name).join(', ')}\n`);
+console.log(`Starting Avail Harbor: ${services.map((s) => s.name).join(', ')}\n`);
 
 // `api` opens the (WAL-mode) database first and alone. Starting every
 // process at once races them all through schema init on the same file —

@@ -38,7 +38,7 @@ async fn health() -> Json<Value> {
 async fn info(State(state): State<SharedState>) -> Json<Value> {
     let c = &state.config;
     Json(json!({
-        "name": "Avail Deploy",
+        "name": "Avail Harbor",
         "allowedDomains": c.allowed_email_domains,
         "deploymentDomain": c.deployment_domain,
         "proxyPort": c.proxy_port,

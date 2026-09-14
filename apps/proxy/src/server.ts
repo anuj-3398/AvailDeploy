@@ -166,7 +166,7 @@ function indexPage(): string {
 
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Avail Deploy — Edge</title>
+<title>Avail Harbor — Edge</title>
 <style>
   :root{color-scheme:light dark}
   body{margin:0;padding:48px 24px;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
@@ -181,7 +181,7 @@ function indexPage(): string {
   code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;opacity:.75}
   .empty{opacity:.5;padding:32px 0}
 </style></head><body><main>
-<h1>Avail Deploy — Edge Network</h1>
+<h1>Avail Harbor — Edge Network</h1>
 <p class="sub">Requests are routed to deployments by hostname. Dashboard: <a href="${config.dashboardUrl}">${config.dashboardUrl}</a></p>
 ${
   rows

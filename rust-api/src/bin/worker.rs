@@ -398,7 +398,7 @@ impl Worker {
             return;
         };
         if let Err(err) =
-            github::create_commit_status(&self.config.github.api_url, token, full_name, sha, state, target_url, description, "avail-deploy").await
+            github::create_commit_status(&self.config.github.api_url, token, full_name, sha, state, target_url, description, "avail-harbor").await
         {
             logger::scoped("worker").warn(format!("GitHub commit status ({state}) failed for {}: {err}", deployment.id));
         }
@@ -417,7 +417,7 @@ impl Worker {
         let sha = deployment.commit_sha.as_deref().unwrap_or("");
         let short_sha = &sha[..sha.len().min(7)];
         let body = format!(
-            "**Deploy Preview for _{}_ ready!**\n\nBuilt with Avail Deploy from commit {short_sha}.\n\n| Name | Status | Preview |\n| :--- | :--- | :--- |\n| **{}** | ✅ Ready | {} |",
+            "**Deploy Preview for _{}_ ready!**\n\nBuilt with Avail Harbor from commit {short_sha}.\n\n| Name | Status | Preview |\n| :--- | :--- | :--- |\n| **{}** | ✅ Ready | {} |",
             project.name,
             project.name,
             urls.first().map(String::as_str).unwrap_or("—"),

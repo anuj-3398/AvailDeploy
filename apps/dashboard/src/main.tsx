@@ -55,7 +55,7 @@ function Topbar({
       <NavLink to="/" className="brand">
         <Logo size={20} />
         <span>
-          Avail <small>Deploy</small>
+          Avail <small>Harbor</small>
         </span>
       </NavLink>
 

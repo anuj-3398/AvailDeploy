@@ -1,4 +1,4 @@
-# Avail Deploy
+# Avail Harbor
 
 An in-house deployment platform — a Vercel clone built from scratch. Connect a
 Git repository, and every push is built, deployed and served: pushes to the
@@ -29,7 +29,7 @@ any address on that domain is allowed in.
 
 ## What it does
 
-| Vercel feature | Avail Deploy |
+| Vercel feature | Avail Harbor |
 | --- | --- |
 | Git integration | GitHub OAuth app **or** personal access token; webhooks (`push`, `pull_request`) with HMAC verification, plus polling for hosts without a public URL — including plain local directories |
 | Framework detection | 74 presets ported from the Vercel CLI, with the same `every`/`some`/`supersedes` algorithm |
@@ -207,7 +207,7 @@ Push to a branch and you get a preview; push to `main` and production updates.
 
 The dashboard has two shells that share the same sidebar shape:
 
-- **Workspace home** (`/`, opened by clicking the **Avail Deploy** logo or the
+- **Workspace home** (`/`, opened by clicking the **Avail Harbor** logo or the
   project switcher's **All Projects** entry) — **All Projects**, **My
   Projects** (the same list, filtered to what you created), **Deployments**,
   **Logs**, **Environment Variables**, **Domains** and **Settings**, each

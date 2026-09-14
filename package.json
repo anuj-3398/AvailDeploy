@@ -1,9 +1,9 @@
 {
-  "name": "avail-deploy",
+  "name": "avail-harbor",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Avail Deploy \u2014 an in-house deployment platform: GitHub integration, builds, preview + production deployments.",
+  "description": "Avail Harbor \u2014 an in-house deployment platform: GitHub integration, builds, preview + production deployments.",
   "packageManager": "npm@11.19.0",
   "workspaces": [
     "packages/*",

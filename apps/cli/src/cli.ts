@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `avail` — command line client for the Avail Deploy platform.
+ * `avail` — command line client for the Avail Harbor platform.
  *
  *   avail login                 sign in with an allow-listed email address
  *   avail whoami                show the signed-in user
@@ -369,7 +369,7 @@ async function rollback(deploymentId: string): Promise<void> {
 
 function usage(): void {
   console.log(`
-${color.bold('avail')} — Avail Deploy CLI
+${color.bold('avail')} — Avail Harbor CLI
 
   avail login                    Sign in with an allow-listed email address
   avail whoami                   Show the signed-in user

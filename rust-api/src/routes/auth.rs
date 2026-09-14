@@ -183,11 +183,11 @@ async fn login(State(state): State<SharedState>, Json(body): Json<LoginBody>) ->
     }
 
     let log = logger::scoped("mail");
-    let subject = format!("{code} is your Avail Deploy sign-in code");
+    let subject = format!("{code} is your Avail Harbor sign-in code");
     log.info(format!("[mail:console] to={email} subject={subject}"));
     let minutes = state.config.login_code_ttl_ms / 60_000;
     for line in [
-        format!("Your Avail Deploy sign-in code is: {code}"),
+        format!("Your Avail Harbor sign-in code is: {code}"),
         String::new(),
         format!("It expires in {minutes} minutes."),
         "If you did not request this, you can ignore this email.".to_string(),

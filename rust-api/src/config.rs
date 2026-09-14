@@ -285,7 +285,7 @@ pub fn load() -> Config {
         cookie_name: string("COOKIE_NAME", "avail_session"),
 
         smtp_url: opt_string("SMTP_URL"),
-        mail_from: string("MAIL_FROM", "Avail Deploy <deploy@availproject.org>"),
+        mail_from: string("MAIL_FROM", "Avail Harbor <deploy@availproject.org>"),
 
         google: GoogleConfig {
             client_id: opt_string("GOOGLE_CLIENT_ID"),
