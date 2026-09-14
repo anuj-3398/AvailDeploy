@@ -7,15 +7,22 @@ import {
   Route,
   Routes,
   useLocation,
-  useNavigate,
 } from 'react-router-dom';
 import { api, type Project, type User } from './api.ts';
 import { AuthContext } from './auth.ts';
 import { ProjectsContext } from './projects.ts';
+import { AccountMenu } from './components/AccountMenu.tsx';
+import { HomeLayout } from './components/HomeLayout.tsx';
 import { ProjectLayout } from './components/ProjectLayout.tsx';
 import { ProjectSwitcher } from './components/ProjectSwitcher.tsx';
-import { Logo, Spinner } from './components/ui.tsx';
+import { Logo } from './components/ui.tsx';
+import { applyTheme, getStoredTheme } from './theme.ts';
+import { AllDeployments } from './pages/AllDeployments.tsx';
+import { AllDomains } from './pages/AllDomains.tsx';
+import { AllEnvVars } from './pages/AllEnvVars.tsx';
+import { AllLogs } from './pages/AllLogs.tsx';
 import { DeploymentPage } from './pages/DeploymentPage.tsx';
+import { Docs } from './pages/Docs.tsx';
 import { GitSettings } from './pages/GitSettings.tsx';
 import { Login } from './pages/Login.tsx';
 import { NewProject } from './pages/NewProject.tsx';
@@ -38,13 +45,7 @@ function Topbar({
   projects: Project[];
   current: Project | null;
 }) {
-  const initials = (user.name ?? user.email)
-    .split(/[\s@._-]+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase();
+  const location = useLocation();
 
   return (
     <header className="topbar">
@@ -58,41 +59,19 @@ function Topbar({
       <span className="topbar-sep" aria-hidden>
         /
       </span>
-      <ProjectSwitcher projects={projects} current={current} />
+      {location.pathname === '/docs' ? (
+        <span className="topbar-crumb">Docs</span>
+      ) : (
+        <ProjectSwitcher projects={projects} current={current} />
+      )}
 
       <div className="spacer" />
 
       <NavLink to="/settings/git" className="topbar-link">
         Git
       </NavLink>
-      <span className="small muted hide-sm" title={user.email}>
-        {user.email}
-      </span>
-      <div className="avatar" aria-hidden>
-        {initials}
-      </div>
-      <button className="btn sm ghost" onClick={onSignOut}>
-        Sign out
-      </button>
+      <AccountMenu user={user} onSignOut={onSignOut} />
     </header>
-  );
-}
-
-/** Sends `/` to the most recently updated project, or to the import flow. */
-function Home({ projects }: { projects: Project[] | null }) {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!projects) return;
-    navigate(projects.length ? `/projects/${projects[0].slug}` : '/new', {
-      replace: true,
-    });
-  }, [projects, navigate]);
-
-  return (
-    <div className="container">
-      <Spinner label="Loading…" />
-    </div>
   );
 }
 
@@ -173,6 +152,13 @@ function App() {
     [upsertProject]
   );
 
+  // Outside a project's own routes there is no "current" project — the
+  // switcher should read "All Projects" rather than keep naming whichever
+  // project was last open.
+  useEffect(() => {
+    if (!location.pathname.startsWith('/projects/')) setCurrent(null);
+  }, [location.pathname]);
+
   if (loading) {
     return (
       <div className="center-note">
@@ -211,11 +197,18 @@ function App() {
             current={current}
           />
           <Routes>
-            <Route path="/" element={<Home projects={projects} />} />
+            <Route path="/" element={<HomeLayout />}>
+              <Route index element={<Projects />} />
+              <Route path="deployments" element={<AllDeployments />} />
+              <Route path="logs" element={<AllLogs />} />
+              <Route path="env" element={<AllEnvVars />} />
+              <Route path="domains" element={<AllDomains />} />
+              <Route path="settings/git" element={<GitSettings />} />
+            </Route>
             <Route path="/login" element={<Navigate to="/" replace />} />
-            <Route path="/projects" element={<Projects />} />
+            <Route path="/projects" element={<Navigate to="/" replace />} />
             <Route path="/new" element={<NewProject />} />
-            <Route path="/settings/git" element={<GitSettings />} />
+            <Route path="/docs" element={<Docs />} />
 
             <Route
               path="/projects/:slug"
@@ -252,6 +245,10 @@ function App() {
     </AuthContext.Provider>
   );
 }
+
+// index.html already applies this inline, before first paint; repeating it
+// here just keeps this module the single source of truth for the default.
+applyTheme(getStoredTheme());
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,9 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type Integration } from '../api.ts';
+import { api, ApiError, type Integration, type Member } from '../api.ts';
 import { Alert, Spinner, TimeAgo } from '../components/ui.tsx';
+
+function initials(value: string): string {
+  return value
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
 
 export function GitSettings() {
   const [integrations, setIntegrations] = useState<Integration[] | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -15,6 +26,7 @@ export function GitSettings() {
     deploymentDomain: string;
   } | null>(null);
   const [status, setStatus] = useState<any>(null);
+  const [showTokenForm, setShowTokenForm] = useState(false);
 
   const load = useCallback(async () => {
     const [list, systemInfo] = await Promise.all([
@@ -24,6 +36,7 @@ export function GitSettings() {
     setIntegrations(list.integrations);
     setInfo(systemInfo as any);
     api.systemStatus().then(setStatus).catch(() => {});
+    api.members().then((r) => setMembers(r.members)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -51,7 +64,7 @@ export function GitSettings() {
   }
 
   return (
-    <div className="container">
+    <>
       <div className="page-head">
         <div className="stack">
           <h1>Git Integration</h1>
@@ -121,40 +134,106 @@ export function GitSettings() {
         ) : null}
       </div>
 
-      <div className="card">
-        <div className="card-head">
-          <h2>Personal access token</h2>
-        </div>
-        <form onSubmit={connect}>
-          <div className="card-body">
-            <p className="muted small">
-              Create a token with the <code>repo</code> and{' '}
-              <code>admin:repo_hook</code> scopes at{' '}
-              <a
-                href="https://github.com/settings/tokens/new"
-                target="_blank"
-                rel="noreferrer"
-              >
-                github.com/settings/tokens
-              </a>
-              . Tokens are encrypted at rest with AES-256-GCM.
-            </p>
-            <div className="field">
-              <input
-                className="input mono"
-                type="password"
-                placeholder="ghp_…"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="card-foot">
-            <button className="btn primary" disabled={busy || !token.trim()}>
-              {busy ? 'Verifying…' : 'Connect'}
+      {info?.githubOAuth && !showTokenForm ? (
+        <div className="card">
+          <div className="card-body" style={{ padding: 12 }}>
+            <button
+              type="button"
+              className="btn ghost sm"
+              onClick={() => setShowTokenForm(true)}
+            >
+              Use a personal access token instead
             </button>
           </div>
-        </form>
+        </div>
+      ) : (
+        <div className="card">
+          <div className="card-head">
+            <h2>Personal access token</h2>
+            {info?.githubOAuth ? (
+              <>
+                <div className="spacer" />
+                <span className="small faint">
+                  Most people want{' '}
+                  <strong>Connect with GitHub OAuth</strong> above instead
+                </span>
+              </>
+            ) : null}
+          </div>
+          <form onSubmit={connect}>
+            <div className="card-body">
+              <p className="muted small">
+                Create a token with the <code>repo</code> and{' '}
+                <code>admin:repo_hook</code> scopes at{' '}
+                <a
+                  href="https://github.com/settings/tokens/new"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  github.com/settings/tokens
+                </a>
+                . Tokens are encrypted at rest with AES-256-GCM.
+              </p>
+              <div className="field">
+                <input
+                  className="input mono"
+                  type="password"
+                  placeholder="ghp_…"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="card-foot">
+              <button className="btn primary" disabled={busy || !token.trim()}>
+                {busy ? 'Verifying…' : 'Connect'}
+              </button>
+              {info?.githubOAuth ? (
+                <button
+                  type="button"
+                  className="btn ghost sm"
+                  onClick={() => setShowTokenForm(false)}
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className="card">
+        <div className="card-head">
+          <h2>Team</h2>
+        </div>
+        <div className="card-body muted small">
+          Role is workspace-wide — the same for every project, not set per
+          project. The first person to ever sign in is the <strong>owner</strong>;
+          everyone else who signs in is a <strong>member</strong>. Deleting a
+          project or removing one of its custom domains needs either the
+          owner, or whoever originally created that specific project — a
+          member can't touch a project someone else on the workspace
+          created. Everything else — deploying, editing env vars,
+          connecting Git, commenting — is the same for both.
+        </div>
+        {members.length > 0 ? (
+          <div className="list">
+            {members.map((member) => (
+              <div key={member.id} className="list-item">
+                <span className="avatar tiny" aria-hidden>
+                  {initials(member.name ?? member.email)}
+                </span>
+                <div className="stack" style={{ flex: 1 }}>
+                  <strong>{member.name ?? member.email}</strong>
+                  <span className="small faint">{member.email}</span>
+                </div>
+                <span className={`btn sm ${member.role === 'admin' ? '' : 'ghost'}`}>
+                  {member.role === 'admin' ? '★ Admin' : 'Member'}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="card">
@@ -164,10 +243,14 @@ export function GitSettings() {
           <button
             className="btn sm"
             onClick={async () => {
-              const result = await api.poll();
-              setNotice(
-                `Checked ${result.checked} repositories, queued ${result.triggered} deployment(s).`
-              );
+              try {
+                const result = await api.poll();
+                setNotice(
+                  `Checked ${result.checked} repositories, queued ${result.triggered} deployment(s).`
+                );
+              } catch (err) {
+                setError(err instanceof ApiError ? err.message : 'Could not poll repositories');
+              }
             }}
           >
             Check repositories now
@@ -182,14 +265,14 @@ export function GitSettings() {
             <dt>Build executor</dt>
             <dd>
               {info?.buildExecutor ?? '—'}
-              {status?.executor
+              {status?.executor && status.executor.ok !== null
                 ? ` · ${status.executor.ok ? 'ok' : 'unavailable'} (${status.executor.detail?.split('\n')[0]})`
                 : ''}
             </dd>
             <dt>Build queue</dt>
             <dd>
-              {status
-                ? `${status.queue.running.length} running, ${status.queue.pending} pending (concurrency ${status.queue.concurrency})`
+              {status?.queue
+                ? `${status.queue.running} running, ${status.queue.pending} pending (concurrency ${status.queue.concurrency})`
                 : '—'}
             </dd>
             <dt>Repository polling</dt>
@@ -203,6 +286,6 @@ export function GitSettings() {
           </dl>
         </div>
       </div>
-    </div>
+    </>
   );
 }

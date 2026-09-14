@@ -610,6 +610,66 @@ export const requestLogs = {
       'SELECT COUNT(*) AS c FROM request_logs WHERE project_id = ?',
       projectId
     )?.c ?? 0,
+
+  /**
+   * Newest-first page of requests across every project, joined with the
+   * owning project's name/slug so a mixed list can still be attributed.
+   */
+  recent: (
+    options: {
+      limit?: number;
+      sinceId?: number;
+      search?: string;
+      status?: 'all' | 'error';
+    } = {}
+  ) => {
+    const { limit = 100, sinceId, search, status = 'all' } = options;
+    const where: string[] = [];
+    const params: unknown[] = [];
+
+    if (sinceId !== undefined) {
+      where.push('r.id > ?');
+      params.push(sinceId);
+    }
+    if (status === 'error') where.push('r.status >= 400');
+    if (search) {
+      where.push(
+        "(r.path LIKE ? OR r.host LIKE ? OR IFNULL(r.message, '') LIKE ? OR p.name LIKE ?)"
+      );
+      const like = `%${search}%`;
+      params.push(like, like, like, like);
+    }
+
+    return all<RequestLog & { project_slug: string; project_name: string }>(
+      `SELECT r.*, p.slug AS project_slug, p.name AS project_name
+       FROM request_logs r JOIN projects p ON p.id = r.project_id
+       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+       ORDER BY r.id DESC LIMIT ?`,
+      ...params,
+      Math.min(limit, 500)
+    );
+  },
+
+  countAll: (options: { search?: string; status?: 'all' | 'error' } = {}) => {
+    const { search, status = 'all' } = options;
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (status === 'error') where.push('r.status >= 400');
+    if (search) {
+      where.push(
+        "(r.path LIKE ? OR r.host LIKE ? OR IFNULL(r.message, '') LIKE ? OR p.name LIKE ?)"
+      );
+      const like = `%${search}%`;
+      params.push(like, like, like, like);
+    }
+    return (
+      get<{ c: number }>(
+        `SELECT COUNT(*) AS c FROM request_logs r JOIN projects p ON p.id = r.project_id
+         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}`,
+        ...params
+      )?.c ?? 0
+    );
+  },
 };
 
 export const webhookDeliveries = {

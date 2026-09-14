@@ -51,6 +51,25 @@ export interface User {
   role: string;
 }
 
+/** Same shape as `User` — a separate type since it's a read-only listing of
+ * everyone in the workspace, not the signed-in user. */
+export interface Member {
+  id: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+  role: string;
+  createdAt: number;
+}
+
+export interface Comment {
+  id: string;
+  deploymentId: string;
+  body: string;
+  createdAt: number;
+  user: Pick<User, 'id' | 'name' | 'email' | 'avatarUrl'> | null;
+}
+
 export interface Integration {
   id: string;
   provider: string;
@@ -67,7 +86,8 @@ export type DeploymentState =
   | 'UPLOADING'
   | 'READY'
   | 'ERROR'
-  | 'CANCELED';
+  | 'CANCELED'
+  | 'SKIPPED';
 
 export interface Deployment {
   id: string;
@@ -121,6 +141,7 @@ export interface Project {
   autoDeploy: boolean;
   previewDeploys: boolean;
   productionUrl: string;
+  createdBy: { id: string; name: string | null; email: string } | null;
   createdAt: number;
   updatedAt: number;
   productionDeployment: Deployment | null;
@@ -172,6 +193,12 @@ export interface RequestLog {
   deploymentId: string | null;
 }
 
+/** A request log row from the workspace-wide feed, attributed to its project. */
+export interface WorkspaceRequestLog extends RequestLog {
+  projectSlug: string;
+  projectName: string;
+}
+
 export const api = {
   /* auth */
   authConfig: () =>
@@ -207,6 +234,9 @@ export const api = {
       webhookUrl: string;
     }>('/api/system/info'),
   systemStatus: () => request<any>('/api/system/status'),
+  /** Everyone in the workspace and their role — role is workspace-wide,
+   * not per-project, so this is the closest thing to "who owns what". */
+  members: () => request<{ members: Member[] }>('/api/system/members'),
   frameworks: () =>
     request<{
       frameworks: {
@@ -338,6 +368,24 @@ export const api = {
   /* deployments */
   deployments: (limit = 25) =>
     request<{ deployments: Deployment[] }>(`/api/deployments?limit=${limit}`),
+  /** Access logs across every project; `sinceId` returns only newer rows. */
+  allLogs: (
+    options: {
+      limit?: number;
+      sinceId?: number;
+      q?: string;
+      status?: 'error';
+    } = {}
+  ) => {
+    const params = new URLSearchParams();
+    if (options.limit) params.set('limit', String(options.limit));
+    if (options.sinceId !== undefined) params.set('sinceId', String(options.sinceId));
+    if (options.q) params.set('q', options.q);
+    if (options.status) params.set('status', options.status);
+    return request<{ logs: WorkspaceRequestLog[]; total: number }>(
+      `/api/logs?${params}`
+    );
+  },
   deployment: (id: string) =>
     request<{ deployment: Deployment; isBuilding: boolean }>(
       `/api/deployments/${id}`
@@ -360,4 +408,15 @@ export const api = {
     }),
   deleteDeployment: (id: string) =>
     request<{ ok: boolean }>(`/api/deployments/${id}`, { method: 'DELETE' }),
+  comments: (id: string) =>
+    request<{ comments: Comment[] }>(`/api/deployments/${id}/comments`),
+  postComment: (id: string, body: string) =>
+    request<{ comment: Comment }>(`/api/deployments/${id}/comments`, {
+      method: 'POST',
+      ...json({ body }),
+    }),
+  deleteComment: (id: string, commentId: string) =>
+    request<{ ok: boolean }>(`/api/deployments/${id}/comments/${commentId}`, {
+      method: 'DELETE',
+    }),
 };

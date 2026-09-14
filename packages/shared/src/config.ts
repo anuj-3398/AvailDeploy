@@ -138,6 +138,10 @@ export const config = {
   // Ports
   apiPort: num(process.env.API_PORT, 3001),
   proxyPort: num(process.env.PROXY_PORT, 3002),
+  /** TLS listener for the proxy — a self-signed cert for `*.avail.localhost`,
+   * generated on first boot (see `ensureSelfSignedCert` in apps/proxy). Not
+   * ACME/publicly-trusted; that needs a real domain we don't have here. */
+  proxyHttpsPort: num(process.env.PROXY_HTTPS_PORT, 3443),
   dashboardPort: num(process.env.DASHBOARD_PORT, 3000),
   host: process.env.HOST ?? '127.0.0.1',
 
@@ -165,6 +169,8 @@ export const config = {
   /** Immutable per-deployment snapshots. */
   deploymentsDir: path.join(workspace.dir, 'deployments'),
   cacheDir: path.join(workspace.dir, 'cache'),
+  /** Self-signed TLS cert/key for the proxy's HTTPS listener. */
+  certsDir: path.join(dataDir, 'certs'),
 
   // Auth
   secret: process.env.AVAIL_SECRET ?? 'dev-insecure-secret-change-me',

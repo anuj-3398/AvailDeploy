@@ -27,6 +27,7 @@ const STATE_CLASS: Record<DeploymentState, string> = {
   READY: 'ready',
   ERROR: 'error',
   CANCELED: 'queued',
+  SKIPPED: 'queued',
 };
 
 const STATE_LABEL: Record<DeploymentState, string> = {
@@ -37,6 +38,7 @@ const STATE_LABEL: Record<DeploymentState, string> = {
   READY: 'Ready',
   ERROR: 'Error',
   CANCELED: 'Canceled',
+  SKIPPED: 'Skipped',
 };
 
 export function StatusBadge({ state }: { state: DeploymentState }) {
@@ -104,6 +106,32 @@ export function Duration({ ms }: { ms: number | null }) {
     <span>
       {Math.floor(seconds / 60)}m {Math.round(seconds % 60)}s
     </span>
+  );
+}
+
+/** Icon paths shared by the project sidebar and the home sidebar. */
+export const navIcons = {
+  overview: 'M2.5 2.5h4v4h-4zM9.5 2.5h4v4h-4zM2.5 9.5h4v4h-4zM9.5 9.5h4v4h-4z',
+  deployments: 'M8 1.8 14 5v6l-6 3.2L2 11V5z',
+  logs: 'M3 3.5h10M3 8h10M3 12.5h6',
+  env: 'M4.5 5.5 2 8l2.5 2.5M11.5 5.5 14 8l-2.5 2.5M9.5 3.5l-3 9',
+  domains: 'M8 1.8a6.2 6.2 0 1 0 0 12.4A6.2 6.2 0 0 0 8 1.8Zm0 0c1.8 1.6 2.7 3.7 2.7 6.2S9.8 12.6 8 14.2m0-12.4C6.2 3.4 5.3 5.5 5.3 8s.9 4.6 2.7 6.2M2.2 6.4h11.6M2.2 9.6h11.6',
+  settings:
+    'M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm5.4-2a5.4 5.4 0 0 0-.1-.9l1.3-1-1.3-2.2-1.5.5a5.3 5.3 0 0 0-1.5-.9L10 1.8H7.4L7.1 3.4c-.5.2-1 .5-1.5.9l-1.5-.5-1.3 2.2 1.3 1a5.4 5.4 0 0 0 0 1.8l-1.3 1 1.3 2.2 1.5-.5c.5.4 1 .7 1.5.9l.3 1.6H10l.3-1.6c.5-.2 1-.5 1.5-.9l1.5.5 1.3-2.2-1.3-1c0-.3.1-.6.1-.9Z',
+};
+
+/** One glyph in a sidebar nav item — an outlined icon on a 16x16 grid. */
+export function NavIcon({ path }: { path: string }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d={path}
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

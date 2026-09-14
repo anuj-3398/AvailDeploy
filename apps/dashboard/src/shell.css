@@ -21,6 +21,14 @@
   color: var(--fg);
 }
 
+/* Stands in for the project switcher on routes that are not project-scoped
+   (the Docs page) — same crumb position, no dropdown. */
+.topbar-crumb {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg);
+}
+
 /* ===================================================== project switcher === */
 
 .switcher {
@@ -178,6 +186,85 @@
   color: var(--fg);
 }
 
+/* ========================================================= account menu === */
+
+.account-menu {
+  position: relative;
+}
+
+.avatar-btn {
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 40;
+  width: 260px;
+  padding: 6px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.account-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.account-row:hover {
+  background: var(--bg-hover);
+}
+
+.account-row svg {
+  color: var(--fg-faint);
+  flex: none;
+}
+
+.account-row.static {
+  justify-content: space-between;
+  cursor: default;
+}
+
+.account-row.static:hover {
+  background: transparent;
+}
+
+.account-row.danger {
+  color: var(--danger);
+}
+
+.account-row.danger svg {
+  color: currentColor;
+}
+
+.account-row.danger:hover {
+  background: rgba(229, 72, 77, 0.1);
+}
+
 /* ====================================================== project sidebar === */
 
 .project-shell {
@@ -297,6 +384,43 @@
 
 .icon-btn:hover {
   background: var(--bg-hover);
+}
+
+/* ================================================== grid/list view toggle === */
+
+.view-toggle {
+  display: flex;
+  flex: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* `> *` (not `button`) so the same class also styles the plain, inert spans
+   the docs page mocks a toggle up with. */
+.view-toggle > * {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--fg-faint);
+  cursor: pointer;
+}
+
+.view-toggle > * + * {
+  border-left: 1px solid var(--border-strong);
+}
+
+.view-toggle > *:hover {
+  background: var(--bg-hover);
+  color: var(--fg);
+}
+
+.view-toggle > .active {
+  background: var(--bg-hover);
+  color: var(--fg);
 }
 
 /* ================================================= production hero card === */
@@ -533,6 +657,19 @@
   font-size: 10px;
 }
 
+/** An extra leading column naming the project, for lists that span all of them. */
+.dep-row.wide {
+  grid-template-columns:
+    130px minmax(0, 2.2fr) 150px 118px 92px minmax(0, 1fr) 78px 20px;
+}
+
+.dep-project {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
 /* ================================================================ logs === */
 
 .log-toolbar {
@@ -601,6 +738,21 @@
   display: block;
 }
 
+/** An extra leading column naming the project, for lists that span all of them. */
+.log-table.wide .log-head,
+.log-table.wide .log-row {
+  grid-template-columns:
+    120px 176px 104px minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
+.log-project {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  font-family: var(--sans);
+}
+
 .log-head {
   color: var(--fg-faint);
   font-family: var(--sans);
@@ -612,7 +764,7 @@
 }
 
 .log-row {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--border);
 }
 
 .log-row:hover {
@@ -687,6 +839,11 @@
     grid-template-columns: minmax(0, 2fr) 130px 110px minmax(0, 1fr) 20px;
   }
 
+  .dep-row.wide {
+    grid-template-columns: minmax(0, 2fr) 130px 110px minmax(0, 1fr) 20px;
+  }
+
+  .dep-project,
   .dep-commit,
   .dep-time {
     display: none;
@@ -697,6 +854,12 @@
     grid-template-columns: 150px 96px minmax(0, 1.4fr) minmax(0, 1fr);
   }
 
+  .log-table.wide .log-head,
+  .log-table.wide .log-row {
+    grid-template-columns: 150px 96px minmax(0, 1.4fr) minmax(0, 1fr);
+  }
+
+  .log-project,
   .log-host {
     display: none;
   }

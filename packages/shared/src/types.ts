@@ -7,9 +7,10 @@ export type DeploymentState =
   | 'UPLOADING'
   | 'READY'
   | 'ERROR'
-  | 'CANCELED';
+  | 'CANCELED'
+  | 'SKIPPED';
 
-export const TERMINAL_STATES: DeploymentState[] = ['READY', 'ERROR', 'CANCELED'];
+export const TERMINAL_STATES: DeploymentState[] = ['READY', 'ERROR', 'CANCELED', 'SKIPPED'];
 
 export type DeploymentTarget = 'production' | 'preview';
 
@@ -25,7 +26,7 @@ export type DeploymentSource =
 /** How the finished build is served by the proxy. */
 export type ServeMode = 'static' | 'server';
 
-export type UserRole = 'owner' | 'member';
+export type UserRole = 'admin' | 'member';
 
 export interface User {
   id: string;

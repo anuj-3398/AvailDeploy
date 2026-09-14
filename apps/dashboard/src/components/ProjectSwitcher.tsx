@@ -81,8 +81,12 @@ export function ProjectSwitcher({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className="switcher-mark">N</span>
-        <span className="switcher-name">{current?.name ?? 'Select project'}</span>
+        {current ? (
+          <span className="switcher-mark small" aria-hidden>
+            {current.name[0]?.toUpperCase()}
+          </span>
+        ) : null}
+        <span className="switcher-name">{current?.name ?? 'All Projects'}</span>
         <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden fill="none">
           <path
             d="M5 6.5 8 3.5l3 3M5 9.5l3 3 3-3"
@@ -123,7 +127,9 @@ export function ProjectSwitcher({
                   onMouseEnter={() => setHighlight(index)}
                   onClick={() => choose(project)}
                 >
-                  <span className="switcher-mark small">N</span>
+                  <span className="switcher-mark small" aria-hidden>
+                    {project.name[0]?.toUpperCase()}
+                  </span>
                   <span className="switcher-item-name">{project.name}</span>
                   {project.id === current?.id ? (
                     <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden fill="none">
@@ -141,6 +147,21 @@ export function ProjectSwitcher({
             )}
           </div>
 
+          <button
+            className="switcher-create"
+            onClick={() => {
+              setOpen(false);
+              navigate('/');
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden>
+              <rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
+              <rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
+              <rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
+              <rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
+            </svg>
+            All Projects
+          </button>
           <button
             className="switcher-create"
             onClick={() => {

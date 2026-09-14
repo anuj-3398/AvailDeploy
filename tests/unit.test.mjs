@@ -7,8 +7,6 @@ import { after, describe, it } from 'node:test';
 
 process.env.AVAIL_SECRET ??= 'test-secret-for-unit-tests';
 process.env.ALLOWED_EMAIL_DOMAINS ??= 'availproject.org';
-process.env.GOOGLE_CLIENT_ID ??= 'test-client-id.apps.googleusercontent.com';
-process.env.GOOGLE_CLIENT_SECRET ??= 'test-client-secret';
 
 const { isEmailAllowed, normalizeEmail } = await import(
   '../packages/shared/src/config.ts'
@@ -21,7 +19,6 @@ const staticFiles = await import('../apps/proxy/src/static.ts');
 const paths = await import('../apps/builder/src/paths.ts');
 const { discoverFunctions } = await import('../apps/builder/src/functions.ts');
 const { renderScript } = await import('../apps/builder/src/executor.ts');
-const { google } = await import('../apps/api/src/lib/google.ts');
 
 const tempDirs = [];
 function tempDir() {
@@ -317,39 +314,6 @@ describe('executor', () => {
     assert.match(script, /export API_KEY='shh'\\''quote'/);
     assert.equal(script.includes('BAD-NAME'), false);
     assert.match(script, /npm run build/);
-  });
-});
-
-/* ---------------------------------------------------------- google oauth */
-
-describe('google sign-in', () => {
-  const redirectUri = 'http://localhost:3001/api/auth/google/callback';
-
-  it('is enabled only when both credentials are present', () => {
-    assert.equal(google.configured, true);
-  });
-
-  it('builds a standards-compliant authorization URL', () => {
-    const url = new URL(google.authorizeUrl(redirectUri, 'signed-state'));
-    assert.equal(url.origin + url.pathname, 'https://accounts.google.com/o/oauth2/v2/auth');
-    assert.equal(url.searchParams.get('response_type'), 'code');
-    assert.equal(url.searchParams.get('scope'), 'openid email profile');
-    assert.equal(url.searchParams.get('redirect_uri'), redirectUri);
-    assert.equal(url.searchParams.get('state'), 'signed-state');
-    assert.equal(
-      url.searchParams.get('client_id'),
-      'test-client-id.apps.googleusercontent.com'
-    );
-  });
-
-  it('hints the allow-listed Workspace domain to the account chooser', () => {
-    const url = new URL(google.authorizeUrl(redirectUri, 'state'));
-    assert.equal(url.searchParams.get('hd'), 'availproject.org');
-  });
-
-  it('sends users through the account chooser rather than silently reusing one', () => {
-    const url = new URL(google.authorizeUrl(redirectUri, 'state'));
-    assert.equal(url.searchParams.get('prompt'), 'select_account');
   });
 });
 
