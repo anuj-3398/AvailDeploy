@@ -365,13 +365,22 @@ export function Docs() {
             emailed sign-in code — collapsed behind a single{' '}
             <strong>Create Password</strong> button until you click it. Once
             set, logging in with that email jumps straight to a password
-            prompt instead of waiting on a code (with a{' '}
-            <strong>Forgot password? Email me a code instead</strong> escape
-            hatch on that screen, so it can never lock you out); the button
-            here becomes <strong>Update Password</strong>, which asks for the
-            current one first. Every password needs 8+ characters, an
-            uppercase and lowercase letter, and a special character — every
-            password field has an eye icon to reveal what you typed.
+            prompt instead of waiting on a code; the button here becomes{' '}
+            <strong>Update Password</strong>, which asks for the current one
+            first. Every password needs 8+ characters, an uppercase and
+            lowercase letter, and a special character — every password field
+            has an eye icon to reveal what you typed.
+          </p>
+          <p className="sub">
+            <strong>Forgot password?</strong> on the sign-in screen is a real
+            reset, not just a fallback to the emailed code: re-enter the
+            email, send a 6-digit code, verify it, then set a brand-new
+            password on its own screen — an account can never be locked out
+            by setting one. The confirm step is gated by a short-lived signed
+            token (not a session) that expires <strong>5 minutes</strong>{' '}
+            after the code is verified; finishing the wizard returns you to
+            the sign-in screen to log in fresh with the new password rather
+            than signing you in automatically.
           </p>
           <p className="sub">
             <strong>Delete account.</strong> Two-step, same as deleting a

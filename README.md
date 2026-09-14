@@ -115,15 +115,23 @@ going straight to a password prompt (scrypt-hashed at rest, same as every
 other secret in this app). A password needs at least 8 characters, one
 uppercase letter, one lowercase letter and one special character, checked
 both client-side (instant feedback) and server-side (the actual gate); an
-eye icon on every password field toggles it to plain text. It's opt-in and
-reversible: an account with no password keeps using the code every time, and
-**Forgot password? Email me a code instead** on the password screen falls
-back to a code without needing the password at all, so setting one can't
-lock an account out. Manage it any time from **Settings → Account**, which
-also has **Delete account** — self-service, refused while the account still
-owns any project (delete or transfer those first — see below). GitHub/Google
-sign-in never touch a password at all — same as real Vercel, identity comes
-from the provider, not a stored secret.
+eye icon on every password field toggles it to plain text. It's opt-in: an
+account with no password keeps using the code every time. Manage it any time
+from **Settings → Account**, which also has **Delete account** —
+self-service, refused while the account still owns any project (delete or
+transfer those first — see below). GitHub/Google sign-in never touch a
+password at all — same as real Vercel, identity comes from the provider, not
+a stored secret.
+
+**Forgot password?** on the password screen is a real reset, not just a code
+fallback: re-enter the email, **Send OTP**, verify the 6-digit code, then set
+a brand-new password on its own screen — no account is ever locked out by
+setting one. That confirm step is gated by a short-lived, single-purpose
+signed token (not a session, not stored anywhere) handed back once the code
+checks out; it expires **5 minutes** after the code was verified, so a token
+left sitting in browser history or a proxy log doesn't stay usable for long.
+Finishing the wizard drops you back at the sign-in screen to log in fresh
+with the new password, rather than signing you in automatically.
 
 The domain is checked **as you type**, against the allow-list the page already
 received from `/api/auth/config` — so it costs no request per keystroke, and a
@@ -470,14 +478,23 @@ design, and what's still open (the SMTP mailer has no Rust port yet — see
 doc's toolchain note) and start them alongside `apps/proxy` and the
 dashboard together, in one command — `scripts/dev.mjs`.
 
+Under `npm run dev`, `rust-api/src` (plus `Cargo.toml`/`Cargo.lock`) is also
+watched: saving a change rebuilds `avail-api`/`avail-worker` and, once that
+succeeds, restarts just those two processes — `apps/proxy` and the dashboard
+keep running throughout, so a Rust-only change no longer needs a manual
+restart of the whole dev server. A failed build leaves the currently-running
+api/worker untouched and just prints the compiler error; fixing it and
+saving again picks up from there. Pass `--no-watch` to turn this off.
+
 ## Scripts
 
 | Command | Does |
 | --- | --- |
-| `npm run dev` | Rust API + Rust build worker + proxy + dashboard, prefixed output |
-| `npm start` | same, release build, built dashboard |
+| `npm run dev` | Rust API + Rust build worker + proxy + dashboard, prefixed output, Rust auto-rebuild/restart on save |
+| `npm start` | same, release build, built dashboard, no watch |
 | `npm run dev:proxy` / `dev:dashboard` | one Node service |
-| `node scripts/dev.mjs --only api,worker` | just the Rust binaries |
+| `node scripts/dev.mjs --only api,worker` | just the Rust binaries, still watched |
+| `node scripts/dev.mjs --no-watch` | disable the Rust auto-rebuild/restart |
 | `npm test` | unit tests |
 | `npm run typecheck` | TypeScript across every workspace |
 | `npm run doctor` | environment check |
