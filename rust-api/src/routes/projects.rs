@@ -9,7 +9,7 @@ use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
-use crate::auth::{require_owner_or_creator, AuthUser};
+use crate::auth::{require_admin_or_creator, AuthUser};
 use crate::builder;
 use crate::config::Config;
 use crate::crypto::random_secret;
@@ -364,7 +364,7 @@ async fn delete_project(user: AuthUser, State(state): State<SharedState>, Path(k
     let deployment_ids = {
         let conn = state.db.lock();
         let project = require_project(&conn, &key)?;
-        require_owner_or_creator(&user.user, &project.created_by)?;
+        require_admin_or_creator(&user.user, &project.created_by)?;
         let deployment_ids: Vec<String> = deployments::for_project(&conn, &project.id, 1000, 0)?.into_iter().map(|d| d.id).collect();
         projects::delete(&conn, &project.id)?;
         events::record(
@@ -643,7 +643,7 @@ struct DomainParams {
 async fn delete_domain(user: AuthUser, State(state): State<SharedState>, Path(params): Path<DomainParams>) -> AppResult<Json<Value>> {
     let conn = state.db.lock();
     let project = require_project(&conn, &params.key)?;
-    require_owner_or_creator(&user.user, &project.created_by)?;
+    require_admin_or_creator(&user.user, &project.created_by)?;
     let alias = aliases::by_domain(&conn, &params.domain)?.filter(|a| a.project_id == project.id);
     let Some(alias) = alias else {
         return Err(AppError::not_found("Domain not found"));

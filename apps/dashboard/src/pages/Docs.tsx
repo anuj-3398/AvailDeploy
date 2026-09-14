@@ -126,22 +126,22 @@ export function Docs() {
           <h2>Access control</h2>
           <p className="sub">
             The first person to sign in becomes the workspace's{' '}
-            <strong>owner</strong>; everyone else who signs in afterward
+            <strong>admin</strong>; everyone else who signs in afterward
             joins as a <strong>member</strong>. There's no invite step and no
             separate roles to assign — it's decided automatically by who
             got there first.
           </p>
           <p className="sub">
-            Owner and member can do almost everything the same way: create
+            Admin and member can do almost everything the same way: create
             projects, deploy, edit environment variables, manage domains and
             webhooks, comment on deployments. The split only matters for two
             actions that can't be undone —{' '}
             <strong>deleting a project</strong> and{' '}
             <strong>removing a custom domain</strong>. Either needs the
-            owner, or specifically whoever created that project — a member
+            admin, or specifically whoever created that project — a member
             can always clean up their own project, but can't touch one
             someone else on the workspace created. Anyone else who tries
-            either gets a plain "Only the workspace owner or whoever created
+            either gets a plain "Only the workspace admin or whoever created
             this project can do this" response rather than a
             partially-completed action.
           </p>
@@ -232,7 +232,7 @@ export function Docs() {
             use <strong>Delete project</strong> at the bottom. It removes the
             project, every deployment and all build artifacts —{' '}
             <strong>this cannot be undone</strong>. Needs the workspace{' '}
-            <strong>owner</strong>, or whoever created this particular
+            <strong>admin</strong>, or whoever created this particular
             project — see <strong>Access control</strong> above; anyone else
             sees the same button but the request is refused, with the
             reason shown right on the page. Removing a custom domain from a
@@ -467,7 +467,7 @@ function DangerZoneMockup() {
         Removes the project, its deployments and all build artifacts. This
         cannot be undone.
         <br />
-        <span className="faint">Owner, or whoever created this project.</span>
+        <span className="faint">Admin, or whoever created this project.</span>
       </div>
       <div className="card-foot">
         <span className="btn danger">Delete project</span>
@@ -487,7 +487,7 @@ function RoleMockup() {
           <strong>anuj@availproject.org</strong>
           <span className="small faint">Signed in first</span>
         </div>
-        <span className="btn sm">owner</span>
+        <span className="btn sm">admin</span>
       </div>
       <div className="list-item">
         <span className="avatar tiny" aria-hidden>

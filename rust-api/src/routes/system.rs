@@ -106,10 +106,10 @@ async fn overview(_user: AuthUser, State(state): State<SharedState>) -> AppResul
 }
 
 /// Who's in this workspace and what they can do — role is workspace-wide
-/// (the first person to ever sign in is `owner`, everyone else `member`),
+/// (the first person to ever sign in is `admin`, everyone else `member`),
 /// not per-project, so this is the only "who owns what" list there is. Any
 /// signed-in user can see it — it's just email/name/role, nothing
-/// sensitive, and knowing who the owner is is the whole point.
+/// sensitive, and knowing who the admin is is the whole point.
 async fn members(_user: AuthUser, State(state): State<SharedState>) -> AppResult<Json<Value>> {
     let conn = state.db.lock();
     let rows = users::list(&conn)?

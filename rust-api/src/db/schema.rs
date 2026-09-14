@@ -211,4 +211,8 @@ pub const MIGRATIONS: &[&str] = &[
          created_at    INTEGER NOT NULL
        )"#,
     "CREATE INDEX IF NOT EXISTS idx_comments_deployment ON deployment_comments(deployment_id, created_at ASC)",
+    // Renamed the "owner" role to "admin" — same meaning (first user to ever
+    // sign in), just a friendlier label. Rust-only: apps/proxy never reads
+    // `role`. Idempotent — a second run finds no `owner` rows left to touch.
+    "UPDATE users SET role = 'admin' WHERE role = 'owner'",
 ];

@@ -227,8 +227,8 @@ export function GitSettings() {
                   <strong>{member.name ?? member.email}</strong>
                   <span className="small faint">{member.email}</span>
                 </div>
-                <span className={`btn sm ${member.role === 'owner' ? '' : 'ghost'}`}>
-                  {member.role === 'owner' ? '★ Owner' : 'Member'}
+                <span className={`btn sm ${member.role === 'admin' ? '' : 'ghost'}`}>
+                  {member.role === 'admin' ? '★ Admin' : 'Member'}
                 </span>
               </div>
             ))}

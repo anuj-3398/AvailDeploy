@@ -45,7 +45,7 @@ any address on that domain is allowed in.
 | Ignored Build Step | An optional per-project command; exit `0` skips the build (deployment lands `SKIPPED`), any other code builds normally |
 | Commit status & PR comments | `pending`→`success`/`failure` status checks on the commit, plus a "Deploy Preview ready" comment on the pull request |
 | Preview comments | A comment thread on each deployment, in the dashboard — anyone signed in can post, only the author can delete their own |
-| Access control | First user to sign in becomes the **owner**; everyone else joins as a **member**. Deleting a project or one of its custom domains needs the owner, or whoever created that project — never someone else's |
+| Access control | First user to sign in becomes the **admin**; everyone else joins as a **member**. Deleting a project or one of its custom domains needs the admin, or whoever created that project — never someone else's |
 | HTTPS | The proxy also terminates TLS on a second port with a self-signed cert for `*.avail.localhost` (local-only — see [Known limits](#known-limits)) |
 | CLI | `avail login / deploy / logs / env / rollback` |
 
@@ -115,7 +115,7 @@ tests assert the two agree (including that both parse on the *last* `@`, so
 Whichever method is used, the address must be on an allow-listed domain. An
 outside Google or GitHub account is bounced back to the login page with the
 reason; there is no open registration, and the first user to sign in becomes
-the workspace owner.
+the workspace admin.
 
 **Google setup:** create an OAuth 2.0 Client ID of type *Web application* in the
 [Google Cloud console](https://console.cloud.google.com/apis/credentials) and
@@ -138,11 +138,11 @@ Google instead gets a **Connect with GitHub OAuth** button on
 whether it also starts a session or just attaches to the one you already
 have).
 
-The first user to sign in becomes the workspace **owner**; everyone else on the
+The first user to sign in becomes the workspace **admin**; everyone else on the
 domain joins as a **member**. Both can create, build, and edit projects the
-same way — the owner/member split only gates the destructive, hard-to-undo
+same way — the admin/member split only gates the destructive, hard-to-undo
 actions: deleting a project and removing a custom domain. Either needs the
-owner, or specifically whoever created that project (`created_by`) — a
+admin, or specifically whoever created that project (`created_by`) — a
 member can always clean up a project they made themselves, but can't touch
 one someone else on the workspace created. Everything else (env vars,
 webhooks, redeploys, comments) is unrestricted between the two.
@@ -501,7 +501,7 @@ Measured on a real Next.js 16 project (325 MB of dependencies, 10,406 files):
 
 ## Known limits
 
-- One workspace per install. Role (owner/member) is workspace-wide, not
+- One workspace per install. Role (admin/member) is workspace-wide, not
   per-project — the only per-project carve-out is that a project's own
   creator can delete it. No teams, no invite step (anyone on the allowed
   email domain can sign up and gets full member access immediately), and

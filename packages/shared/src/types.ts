@@ -26,7 +26,7 @@ export type DeploymentSource =
 /** How the finished build is served by the proxy. */
 export type ServeMode = 'static' | 'server';
 
-export type UserRole = 'owner' | 'member';
+export type UserRole = 'admin' | 'member';
 
 export interface User {
   id: string;

@@ -106,12 +106,12 @@ export function AccountMenu({
             <span
               className="small faint"
               title={
-                user.role === 'owner'
-                  ? 'Owner — can delete any project and remove any domain'
+                user.role === 'admin'
+                  ? 'Admin — can delete any project and remove any domain'
                   : "Member — can delete projects and domains you created yourself, not anyone else's"
               }
             >
-              {user.role === 'owner' ? '★ Owner' : 'Member'} of this workspace
+              {user.role === 'admin' ? '★ Admin' : 'Member'} of this workspace
             </span>
           </div>
 

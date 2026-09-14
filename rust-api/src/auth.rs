@@ -64,7 +64,7 @@ pub fn upsert_user(
             email: &normalized,
             name: Some(name.unwrap_or(&default_name)),
             avatar_url,
-            role: if is_first_user { "owner" } else { "member" },
+            role: if is_first_user { "admin" } else { "member" },
         },
     )?;
     users::touch_login(&conn, &created.id)?;
@@ -133,31 +133,31 @@ pub fn resolve_user(state: &SharedState, headers: &header::HeaderMap, jar: &Cook
     Some((user, session.id))
 }
 
-/// Gates a destructive action to the workspace owner (the first user ever
+/// Gates a destructive action to the workspace admin (the first user ever
 /// to sign in — see `upsert_user` above). `role` has existed on every user
 /// row since the schema was ported from Node, but nothing ever checked it;
 /// this is that check.
-pub fn require_owner(user: &User) -> Result<(), AppError> {
-    if user.role == "owner" {
+pub fn require_admin(user: &User) -> Result<(), AppError> {
+    if user.role == "admin" {
         Ok(())
     } else {
-        Err(AppError::new(StatusCode::FORBIDDEN, "owner_required", "Only the workspace owner can do this"))
+        Err(AppError::new(StatusCode::FORBIDDEN, "admin_required", "Only the workspace admin can do this"))
     }
 }
 
-/// Same as `require_owner`, but also lets whoever created the project in
+/// Same as `require_admin`, but also lets whoever created the project in
 /// question act on it — "I made a mess, I can clean up my own mess" — so a
 /// member can delete a project (or remove a domain from one) they created
-/// themselves without needing the owner's involvement, while still being
+/// themselves without needing the admin's involvement, while still being
 /// unable to touch a project someone else on the workspace created.
-pub fn require_owner_or_creator(user: &User, created_by: &str) -> Result<(), AppError> {
-    if user.role == "owner" || user.id == created_by {
+pub fn require_admin_or_creator(user: &User, created_by: &str) -> Result<(), AppError> {
+    if user.role == "admin" || user.id == created_by {
         Ok(())
     } else {
         Err(AppError::new(
             StatusCode::FORBIDDEN,
-            "owner_required",
-            "Only the workspace owner or whoever created this project can do this",
+            "admin_required",
+            "Only the workspace admin or whoever created this project can do this",
         ))
     }
 }
