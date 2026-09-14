@@ -14,10 +14,12 @@ pub mod env_vars;
 pub mod events;
 pub mod integrations;
 pub mod login_codes;
+pub mod notifications;
 pub mod projects;
 pub mod repo_watch;
 pub mod request_logs;
 pub mod sessions;
+pub mod transfers;
 pub mod users;
 pub mod webhook_deliveries;
 
@@ -50,6 +52,15 @@ impl Db {
             std::fs::create_dir_all(parent).ok();
         }
         let conn = Connection::open(path)?;
+        // Set before anything else: SCHEMA's own `PRAGMA busy_timeout` is
+        // three statements into that batch, so without this, the first two
+        // (switching to WAL, enabling foreign keys — both need a moment's
+        // lock) run with SQLite's default zero-wait busy handler. Multiple
+        // processes (avail-api, avail-worker, apps/proxy) can all open this
+        // same file within the same instant at boot, and one loses that
+        // race with an immediate "database is locked" instead of a brief
+        // wait — this closes that window before SCHEMA ever runs.
+        conn.busy_timeout(std::time::Duration::from_millis(5000))?;
         conn.execute_batch(schema::SCHEMA)?;
         for migration in schema::MIGRATIONS {
             if let Err(err) = conn.execute_batch(migration) {

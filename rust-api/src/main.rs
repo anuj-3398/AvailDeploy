@@ -54,6 +54,7 @@ async fn main() {
         .merge(routes::git::router())
         .merge(routes::env::router())
         .merge(routes::projects::router())
+        .merge(routes::notifications::router())
         .merge(routes::deployments::router())
         .merge(routes::webhooks::router())
         .layer(cors)

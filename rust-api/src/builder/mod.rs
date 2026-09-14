@@ -402,9 +402,12 @@ pub async fn run_build(cfg: &Config, input: BuildInput) -> Result<BuildOutcome, 
     }
 
     let serve_mode = settings.serve_mode.clone();
-    let mut output_path: Option<String> = None;
 
-    if serve_mode == "static" {
+    // Both branches always produce a path — there's no "neither" case — so
+    // this is bound once via the if/else's own value rather than declared
+    // `mut` and overwritten, which left the initial `None` a dead write the
+    // compiler rightly warned about.
+    let output_path: Option<String> = if serve_mode == "static" {
         let output_directory = resolve_output_directory(&work_dir, settings.output_directory.as_deref(), settings.framework.as_deref());
         let static_dir = match &output_directory {
             None => {
@@ -422,7 +425,7 @@ pub async fn run_build(cfg: &Config, input: BuildInput) -> Result<BuildOutcome, 
                 in_snapshot(&workspace.src, &work_dir.join(dir))
             }
         };
-        output_path = Some(static_dir);
+        Some(static_dir)
     } else {
         if settings.start_command.is_none() {
             return Err(format!(
@@ -430,9 +433,9 @@ pub async fn run_build(cfg: &Config, input: BuildInput) -> Result<BuildOutcome, 
                 settings.framework.as_deref().unwrap_or("unknown")
             ));
         }
-        output_path = Some(in_snapshot(&workspace.src, &work_dir));
         log("info", &format!("Serve mode: server ({})", settings.start_command.as_deref().unwrap_or("")));
-    }
+        Some(in_snapshot(&workspace.src, &work_dir))
+    };
 
     /* ------------------------------------------------------------ publish */
     on_phase(BuildPhase::Publishing);

@@ -44,8 +44,12 @@ any address on that domain is allowed in.
 | `vercel.json` | `avail.json` (or `vercel.json`) for redirects, rewrites, headers, cleanUrls, functions |
 | Ignored Build Step | An optional per-project command; exit `0` skips the build (deployment lands `SKIPPED`), any other code builds normally |
 | Commit status & PR comments | `pending`→`success`/`failure` status checks on the commit, plus a "Deploy Preview ready" comment on the pull request |
-| Preview comments | A comment thread on each deployment, in the dashboard — anyone signed in can post, only the author can delete their own |
+| Preview comments | A comment thread on each deployment, in the dashboard — anyone signed in can post, only the author can delete their own; the project's owner gets notified |
 | Access control | First user to sign in becomes the **admin**; everyone else joins as a **member**. Deleting a project or one of its custom domains needs the admin, or whoever created that project — never someone else's |
+| Password sign-in | Optional alternative to the emailed one-time code — create one any time from Settings → Account, with a forgotten-password fallback to a code so it can never lock an account out |
+| Ownership transfer | A project's creator can hand it to another workspace member — nothing changes until the recipient **accepts** the request; the sender can **cancel** any time before then |
+| Notifications | An in-app bell covering everything above: transfer requests/responses, a deployment going ready or failing, a comment on your project, and a push that triggered a build |
+| Account deletion | Self-service, from Settings → Account — refuses while the account still owns any project, so nothing is ever left ownerless |
 | HTTPS | The proxy also terminates TLS on a second port with a self-signed cert for `*.avail.localhost` (local-only — see [Known limits](#known-limits)) |
 | CLI | `avail login / deploy / logs / env / rollback` |
 
@@ -105,6 +109,22 @@ switches you to the other tab and explains why. Since anyone on an allow-listed
 domain may sign up regardless, saying which case applies leaks nothing they
 could not learn by trying.
 
+**Password sign-in (optional):** at signup, the code step has an optional
+password field — set one and future logins skip the emailed code entirely,
+going straight to a password prompt (scrypt-hashed at rest, same as every
+other secret in this app). A password needs at least 8 characters, one
+uppercase letter, one lowercase letter and one special character, checked
+both client-side (instant feedback) and server-side (the actual gate); an
+eye icon on every password field toggles it to plain text. It's opt-in and
+reversible: an account with no password keeps using the code every time, and
+**Forgot password? Email me a code instead** on the password screen falls
+back to a code without needing the password at all, so setting one can't
+lock an account out. Manage it any time from **Settings → Account**, which
+also has **Delete account** — self-service, refused while the account still
+owns any project (delete or transfer those first — see below). GitHub/Google
+sign-in never touch a password at all — same as real Vercel, identity comes
+from the provider, not a stored secret.
+
 The domain is checked **as you type**, against the allow-list the page already
 received from `/api/auth/config` — so it costs no request per keystroke, and a
 disallowed address is rejected before anything is submitted. That is feedback
@@ -144,8 +164,20 @@ same way — the admin/member split only gates the destructive, hard-to-undo
 actions: deleting a project and removing a custom domain. Either needs the
 admin, or specifically whoever created that project (`created_by`) — a
 member can always clean up a project they made themselves, but can't touch
-one someone else on the workspace created. Everything else (env vars,
-webhooks, redeploys, comments) is unrestricted between the two.
+one someone else on the workspace created. The delete button itself is
+disabled up front for anyone who doesn't qualify, and deleting for real needs
+typing the project's name to confirm — not just a second click. Everything
+else (env vars, webhooks, redeploys, comments) is unrestricted between the
+two.
+
+**Transferring ownership is stricter than deleting.** A project's creator
+(not even the admin — deliberately, so "I'm the admin" is never the reason a
+project changes hands without its owner's say) can offer it to another
+workspace member from that project's Settings. Nothing changes until the
+recipient **accepts** the request from their notifications — the sender can
+**cancel** it any time before then, and while it's pending the sender's
+Settings page shows "Transfer in progress" with that Cancel button in place
+of the transfer form.
 
 ### Deploy something
 
@@ -153,6 +185,8 @@ webhooks, redeploys, comments) is unrestricted between the two.
    configured — see [Sign-in methods](#sign-in-methods) above), or paste a
    personal access token with `repo` and `admin:repo_hook` scopes if it
    isn't. Signing in with GitHub in the first place skips this step entirely.
+   One GitHub account can only back one workspace member at a time — connecting
+   one already attached to someone else is refused, naming who has it.
 2. **Add New** — pick a repository (or paste a git URL or a local path).
 3. The first production deployment starts immediately; logs stream live.
 4. **Git → Create webhook on GitHub** so later pushes deploy on their own. If
@@ -166,18 +200,26 @@ Push to a branch and you get a preview; push to `main` and production updates.
 The dashboard has two shells that share the same sidebar shape:
 
 - **Workspace home** (`/`, opened by clicking the **Avail Deploy** logo or the
-  project switcher's **All Projects** entry) — **All Projects**, **Deployments**,
+  project switcher's **All Projects** entry) — **All Projects**, **My
+  Projects** (the same list, filtered to what you created), **Deployments**,
   **Logs**, **Environment Variables**, **Domains** and **Settings**, each
   showing that resource across *every* project (env vars and domains are
   read-only here; add or remove them from a project's own Settings tab).
 - **A project's own shell** (`/projects/:slug`, opened from the switcher or a
-  project card) — the same six tabs, scoped to just that one project, with the
-  usual editing (build settings, env vars, domains, git integration).
+  project card) — a **Home** link back to the workspace, then the same six
+  tabs scoped to just that one project, with the usual editing (build
+  settings, env vars, domains, git integration).
 
 A deployment's own page also has a **Comments** section — a lightweight
 thread for leaving notes on that specific build ("approving this preview",
 "why did this fail"). Anyone signed in can post; only the author can delete
-their own comment.
+their own comment; the project's owner gets a notification either way.
+
+The bell icon in the top bar is every notification aimed at you: an
+ownership transfer request (with **Accept**/**Decline** right there) or its
+outcome, a deployment on one of your projects going ready or failing, a
+comment on one of them, or a push that triggered a build. Unread ones are
+marked; **Mark all read** clears the badge without acting on any of them.
 
 For the full walkthrough — creating, navigating and deleting projects,
 deployments, environment variables and domains, each with a screen preview —
@@ -335,7 +377,7 @@ Precedence: project settings in the dashboard → `avail.json` → framework pre
 ```bash
 npm link            # or: node --experimental-strip-types apps/cli/src/cli.ts
 
-avail login                    # email code, same domain rules
+avail login                    # email code, or a password if the account has one
 avail deploy            # preview deployment of the current repo
 avail deploy --prod            # production deployment
 avail logs <deploymentId>      # stream build logs
@@ -353,6 +395,10 @@ the same machine as the platform.
 
 - Sign-in is gated on the email **domain**; there is no open registration.
 - Sessions are server-side rows referenced by an HMAC-signed cookie.
+- Passwords are scrypt-hashed with a random per-password salt, never the raw
+  secret; deleting an account cascades to its sessions (signed out
+  everywhere) and connected Git accounts (disconnected) at the database
+  level, not just from the UI.
 - Environment variables and git tokens are encrypted at rest with AES-256-GCM,
   keyed by `AVAIL_SECRET` with a per-purpose derived key. Variable values are
   never returned in list responses — revealing one is a separate request.
@@ -518,3 +564,10 @@ Measured on a real Next.js 16 project (325 MB of dependencies, 10,406 files):
   proxy.
 - No repository poller in `avail-worker` beyond webhooks — `/api/system/poll`
   and the "Check repositories now" button are documented stubs (`501`).
+- **Settings → Git → Disconnect** only forgets the account on this end — it
+  doesn't call GitHub to revoke the grant, so GitHub still remembers you
+  authorized this app and reconnecting skips the consent screen entirely
+  (this is GitHub's own behavior for every OAuth app, not specific to this
+  one). To make GitHub ask again, revoke it yourself from
+  [github.com/settings/applications](https://github.com/settings/applications)
+  → Authorized OAuth Apps.

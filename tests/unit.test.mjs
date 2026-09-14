@@ -359,3 +359,27 @@ describe('domain check shown while typing', () => {
     assert.equal(isEmailAllowed('a@availproject.org@evil.com'), false);
   });
 });
+
+describe('password complexity rule', () => {
+  // Mirrors apps/dashboard/src/validation.ts's passwordError, which mirrors
+  // the server's validate_password in rust-api/src/routes/auth.rs — the
+  // server is the real gate, this and the dashboard copy are both feedback.
+  const passwordError = (password) => {
+    if (password.length < 8) return 'length';
+    if (!/[A-Z]/.test(password)) return 'uppercase';
+    if (!/[a-z]/.test(password)) return 'lowercase';
+    if (!/[^A-Za-z0-9]/.test(password)) return 'special';
+    return null;
+  };
+
+  it('accepts a password meeting every rule', () => {
+    assert.equal(passwordError('Correct1!'), null);
+  });
+
+  it('rejects a password missing any one rule', () => {
+    assert.equal(passwordError('sh0rt!'), 'length');
+    assert.equal(passwordError('lowercase1!'), 'uppercase');
+    assert.equal(passwordError('UPPERCASE1!'), 'lowercase');
+    assert.equal(passwordError('Password123'), 'special');
+  });
+});

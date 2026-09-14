@@ -5,6 +5,9 @@ import { Alert, NavIcon, Spinner, navIcons } from '../components/ui.tsx';
 import { useProjects } from '../projects.ts';
 
 const NAV = [
+  // Absolute — every other entry is relative to /projects/:slug, this one
+  // deliberately leaves the project altogether.
+  { to: '/', label: 'Home', path: navIcons.home, end: true, absolute: true },
   { to: '', label: 'Overview', path: navIcons.overview, end: true },
   { to: 'deployments', label: 'Deployments', path: navIcons.deployments },
   { to: 'logs', label: 'Logs', path: navIcons.logs },
@@ -98,7 +101,7 @@ export function ProjectLayout({
             <NavLink
               key={item.label}
               end={item.end}
-              to={`/projects/${project.slug}${item.to ? `/${item.to}` : ''}`}
+              to={item.absolute ? item.to : `/projects/${project.slug}${item.to ? `/${item.to}` : ''}`}
               className={({ isActive }) =>
                 isActive ? 'side-link active' : 'side-link'
               }

@@ -18,7 +18,7 @@ use serde_json::{json, Value};
 use crate::config::Config;
 use crate::crypto::Crypto;
 use crate::db::types::{Deployment, Project};
-use crate::db::{aliases, deployments, env_vars, events, integrations, now_ms, projects};
+use crate::db::{aliases, deployments, env_vars, events, integrations, notifications, now_ms, projects};
 use crate::error::AppError;
 use crate::ids::{new_alias_id, new_deployment_id, short_hash, slugify};
 
@@ -134,6 +134,27 @@ pub fn create_deployment(
             user_id: input.created_by.as_deref(),
         },
     )?;
+
+    // A webhook-triggered build (a push, in practice) is the one source the
+    // project's creator didn't just click themselves — `manual` and
+    // `redeploy` are their own action, so telling them about it would just
+    // echo something they already know.
+    if input.source == "git" {
+        let subject = created.commit_message.as_deref().unwrap_or("a new commit");
+        let _ = notifications::create(
+            conn,
+            notifications::NewNotification {
+                user_id: &project.created_by,
+                r#type: "deployment_triggered",
+                title: &format!("New push triggered a build for {} ({branch})", project.name),
+                body: Some(subject),
+                project_id: Some(&project.id),
+                deployment_id: Some(&id),
+                transfer_id: None,
+                actor_id: None,
+            },
+        );
+    }
 
     Ok(created)
 }

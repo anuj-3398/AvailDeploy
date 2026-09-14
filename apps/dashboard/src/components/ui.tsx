@@ -112,6 +112,8 @@ export function Duration({ ms }: { ms: number | null }) {
 /** Icon paths shared by the project sidebar and the home sidebar. */
 export const navIcons = {
   overview: 'M2.5 2.5h4v4h-4zM9.5 2.5h4v4h-4zM2.5 9.5h4v4h-4zM9.5 9.5h4v4h-4z',
+  home: 'M2.3 8 8 3l5.7 5M4.5 6.4V13h7V6.4',
+  mine: 'M5.5 7a2.5 2.5 0 1 1 5 0 2.5 2.5 0 0 1-5 0ZM3 13.2c.9-2.4 2.9-3.7 5-3.7s4.1 1.3 5 3.7',
   deployments: 'M8 1.8 14 5v6l-6 3.2L2 11V5z',
   logs: 'M3 3.5h10M3 8h10M3 12.5h6',
   env: 'M4.5 5.5 2 8l2.5 2.5M11.5 5.5 14 8l-2.5 2.5M9.5 3.5l-3 9',
@@ -153,6 +155,83 @@ export function Alert({
 }) {
   if (!children) return null;
   return <div className={`alert ${kind}`}>{children}</div>;
+}
+
+function EyeIcon({ open }: { open: boolean }) {
+  return open ? (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M1.5 8S4 3 8 3s6.5 5 6.5 5-2.5 5-6.5 5-6.5-5-6.5-5Z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
+    </svg>
+  ) : (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M2 2l12 12M6.5 6.6a2 2 0 0 0 2.9 2.9M4.2 4.3C2.6 5.3 1.5 8 1.5 8s2.5 5 6.5 5c1.2 0 2.2-.4 3.1-1M9.9 3.3C9.3 3.1 8.7 3 8 3c-.4 0-.8 0-1.2.1M11.8 4.9c1.4 1 2.7 3.1 2.7 3.1s-.5 1-1.4 2"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/**
+ * A password `<input>` with a show/hide eye toggle inside the field, same
+ * idea as `CopyField`'s copy button. Uses the same `.input` styling as every
+ * other text field — only the wrapper and the toggle button are new.
+ */
+export function PasswordField({
+  id,
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  required,
+  autoFocus,
+  className,
+}: {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  autoComplete?: string;
+  required?: boolean;
+  autoFocus?: boolean;
+  /** Extra class(es) appended to the input's own `input`, e.g. `mono`. */
+  className?: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="password-field">
+      <input
+        id={id}
+        className={className ? `input ${className}` : 'input'}
+        type={visible ? 'text' : 'password'}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        required={required}
+        autoFocus={autoFocus}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        type="button"
+        className="password-toggle"
+        tabIndex={-1}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        aria-pressed={visible}
+        onClick={() => setVisible((v) => !v)}
+      >
+        <EyeIcon open={visible} />
+      </button>
+    </div>
+  );
 }
 
 export function CopyField({ value }: { value: string }) {

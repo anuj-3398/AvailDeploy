@@ -18,6 +18,9 @@ pub struct User {
     pub role: String,
     pub created_at: i64,
     pub last_login_at: Option<i64>,
+    /// Scrypt hash from `crypto::hash_password`, or `None` if this account
+    /// only ever signed in via an emailed code or GitHub/Google OAuth.
+    pub password_hash: Option<String>,
 }
 
 impl FromRow for User {
@@ -30,6 +33,7 @@ impl FromRow for User {
             role: row.get("role")?,
             created_at: row.get("created_at")?,
             last_login_at: row.get("last_login_at")?,
+            password_hash: row.get("password_hash")?,
         })
     }
 }
@@ -356,6 +360,68 @@ impl FromRow for RequestLog {
             duration_ms: row.get("duration_ms")?,
             kind: row.get("kind")?,
             message: row.get("message")?,
+        })
+    }
+}
+
+/// A pending (or resolved) hand-off of a project to a different workspace
+/// member. See `db::transfers`.
+#[derive(Debug, Clone, Serialize)]
+pub struct ProjectTransfer {
+    pub id: String,
+    pub project_id: String,
+    pub from_user_id: String,
+    pub to_user_id: String,
+    /// "pending" | "accepted" | "declined" | "cancelled"
+    pub status: String,
+    pub created_at: i64,
+    pub resolved_at: Option<i64>,
+}
+
+impl FromRow for ProjectTransfer {
+    fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
+        Ok(ProjectTransfer {
+            id: row.get("id")?,
+            project_id: row.get("project_id")?,
+            from_user_id: row.get("from_user_id")?,
+            to_user_id: row.get("to_user_id")?,
+            status: row.get("status")?,
+            created_at: row.get("created_at")?,
+            resolved_at: row.get("resolved_at")?,
+        })
+    }
+}
+
+/// One in-app notification for `user_id`. See `db::notifications`.
+#[derive(Debug, Clone, Serialize)]
+pub struct Notification {
+    pub id: String,
+    pub user_id: String,
+    pub r#type: String,
+    pub title: String,
+    pub body: Option<String>,
+    pub project_id: Option<String>,
+    pub deployment_id: Option<String>,
+    pub transfer_id: Option<String>,
+    pub actor_id: Option<String>,
+    pub read_at: Option<i64>,
+    pub created_at: i64,
+}
+
+impl FromRow for Notification {
+    fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Notification {
+            id: row.get("id")?,
+            user_id: row.get("user_id")?,
+            r#type: row.get("type")?,
+            title: row.get("title")?,
+            body: row.get("body")?,
+            project_id: row.get("project_id")?,
+            deployment_id: row.get("deployment_id")?,
+            transfer_id: row.get("transfer_id")?,
+            actor_id: row.get("actor_id")?,
+            read_at: row.get("read_at")?,
+            created_at: row.get("created_at")?,
         })
     }
 }

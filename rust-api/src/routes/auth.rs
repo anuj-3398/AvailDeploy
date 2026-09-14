@@ -10,7 +10,7 @@ use std::sync::Mutex;
 use axum::extract::{Query, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Redirect, Response};
-use axum::routing::{get, post};
+use axum::routing::{delete as delete_method, get, post};
 use axum::{Json, Router};
 use axum_extra::extract::cookie::CookieJar;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -20,8 +20,8 @@ use serde_json::{json, Value};
 
 use crate::auth::{end_session, public_user, resolve_user, start_session, upsert_user, AuthUser};
 use crate::config::{is_email_allowed, normalize_email};
-use crate::crypto::{generate_login_code, safe_equal};
-use crate::db::{integrations, login_codes, now_ms};
+use crate::crypto::{generate_login_code, hash_password, safe_equal, verify_password};
+use crate::db::{integrations, login_codes, now_ms, projects, users};
 use crate::error::{AppError, AppResult};
 use crate::ids::{id, new_integration_id};
 use crate::logger;
@@ -32,7 +32,12 @@ pub fn router() -> Router<SharedState> {
     Router::new()
         .route("/api/auth/config", get(auth_config))
         .route("/api/auth/login", post(login))
+        .route("/api/auth/login/password", post(login_with_password))
         .route("/api/auth/verify", post(verify))
+        .route("/api/auth/password", post(set_password))
+        .route("/api/auth/password/reset/verify", post(reset_password_verify))
+        .route("/api/auth/password/reset/confirm", post(reset_password_confirm))
+        .route("/api/auth/account", delete_method(delete_account))
         .route("/api/auth/logout", post(logout))
         .route("/api/auth/me", get(me))
         .route("/api/auth/sessions", get(sessions))
@@ -59,6 +64,11 @@ async fn auth_config(State(state): State<SharedState>) -> Json<Value> {
 struct LoginBody {
     email: Option<String>,
     intent: Option<String>,
+    /// "Forgot my password" escape hatch — an account with a password set
+    /// normally skips the emailed code entirely (see below), but this
+    /// forces one anyway so a lost password doesn't lock the account out.
+    #[serde(rename = "forceCode")]
+    force_code: Option<bool>,
 }
 
 /// Simple in-memory throttle for code requests, keyed by email — mirrors
@@ -70,6 +80,29 @@ fn throttle_table() -> &'static Mutex<HashMap<String, Vec<i64>>> {
 
 const MAX_REQUESTS_PER_WINDOW: usize = 5;
 const WINDOW_MS: i64 = 10 * 60 * 1000;
+
+const MIN_PASSWORD_LEN: usize = 8;
+
+/// Standard complexity rule: at least 8 characters, one uppercase letter,
+/// one lowercase letter, and one special (non-alphanumeric) character.
+/// Mirrored client-side in `apps/dashboard/src/validation.ts` for instant
+/// feedback — this is the real gate, that copy is just UX.
+fn validate_password(password: &str) -> AppResult<()> {
+    let weak = |message: &str| Err(AppError::bad_request("weak_password", message));
+    if password.chars().count() < MIN_PASSWORD_LEN {
+        return weak(&format!("Password must be at least {MIN_PASSWORD_LEN} characters"));
+    }
+    if !password.chars().any(|c| c.is_ascii_uppercase()) {
+        return weak("Password must include at least one uppercase letter");
+    }
+    if !password.chars().any(|c| c.is_ascii_lowercase()) {
+        return weak("Password must include at least one lowercase letter");
+    }
+    if !password.chars().any(|c| !c.is_ascii_alphanumeric()) {
+        return weak("Password must include at least one special character");
+    }
+    Ok(())
+}
 
 fn throttle(email: &str) -> AppResult<()> {
     let now = now_ms();
@@ -125,6 +158,22 @@ async fn login(State(state): State<SharedState>, Json(body): Json<LoginBody>) ->
         ));
     }
 
+    // A password-holding account signs in with that instead — no code to
+    // request or wait on, so skip straight to the password step.
+    if let Some(user) = &existing {
+        if intent == "login" && user.password_hash.is_some() && !body.force_code.unwrap_or(false) {
+            return Ok(Json(json!({
+                "ok": true,
+                "email": email,
+                "intent": intent,
+                "method": "password",
+                "delivered": false,
+                "expiresInMs": Value::Null,
+                "code": Value::Null,
+            })));
+        }
+    }
+
     throttle(&email)?;
 
     let code = generate_login_code();
@@ -151,6 +200,7 @@ async fn login(State(state): State<SharedState>, Json(body): Json<LoginBody>) ->
         "ok": true,
         "email": email,
         "intent": intent,
+        "method": "code",
         "delivered": delivered,
         "expiresInMs": state.config.login_code_ttl_ms,
         "code": if !delivered && state.config.auth_dev_echo { Some(code) } else { None },
@@ -162,6 +212,13 @@ struct VerifyBody {
     email: Option<String>,
     code: Option<String>,
     client: Option<String>,
+    /// Optional — set a password in the same step as verifying the code
+    /// (signup's "create a password" field), so the account can sign in
+    /// with it next time instead of requesting a new code. Ignored if the
+    /// account already has a password — resetting a *forgotten* one is a
+    /// separate, dedicated flow (`/api/auth/password/reset/*` below), not
+    /// this endpoint.
+    password: Option<String>,
 }
 
 /// Step 2 — exchange the code for a session.
@@ -204,7 +261,20 @@ async fn verify(
         let conn = state.db.lock();
         login_codes::consume(&conn, &record.id)?;
     }
-    let user = upsert_user(&state, &email, None, None)?;
+    let mut user = upsert_user(&state, &email, None, None)?;
+
+    if let Some(password) = body.password.as_deref().filter(|p| !p.is_empty()) {
+        if user.password_hash.is_none() {
+            validate_password(password)?;
+            let hash = hash_password(password);
+            {
+                let conn = state.db.lock();
+                users::set_password(&conn, &user.id, Some(&hash))?;
+            }
+            user.password_hash = Some(hash);
+        }
+    }
+
     let user_agent = headers.get(axum::http::header::USER_AGENT).and_then(|v| v.to_str().ok());
     let (jar, session_id) = start_session(&state, jar, &user, user_agent)?;
     logger::scoped("auth").info(format!("{} signed in", user.email));
@@ -217,6 +287,234 @@ async fn verify(
     };
 
     Ok((jar, Json(json!({ "user": public_user(&user), "token": token }))))
+}
+
+#[derive(Deserialize)]
+struct PasswordLoginBody {
+    email: Option<String>,
+    password: Option<String>,
+    client: Option<String>,
+}
+
+/// Alternative to the `login` + `verify` pair, for accounts that have set a
+/// password — no code involved at all. Shares `login`'s per-email throttle
+/// so this can't be used to brute-force a password any faster than a code.
+async fn login_with_password(
+    State(state): State<SharedState>,
+    jar: CookieJar,
+    headers: HeaderMap,
+    Json(body): Json<PasswordLoginBody>,
+) -> AppResult<(CookieJar, Json<Value>)> {
+    let email = normalize_email(body.email.as_deref().unwrap_or(""));
+    let password = body.password.as_deref().unwrap_or("");
+    if email.is_empty() || password.is_empty() {
+        return Err(AppError::bad_request("invalid_request", "Email and password are required"));
+    }
+
+    throttle(&email)?;
+
+    // Same message whether the account doesn't exist or the password is
+    // wrong — telling them apart would let this endpoint be used to find
+    // out which addresses have accounts.
+    let invalid = || AppError::bad_request("invalid_credentials", "Incorrect email or password");
+    let user = { let conn = state.db.lock(); users::by_email(&conn, &email)? };
+    let user = user.ok_or_else(invalid)?;
+    let hash = user.password_hash.as_deref().ok_or_else(invalid)?;
+    if !verify_password(password, hash) {
+        return Err(invalid());
+    }
+
+    let user = {
+        let conn = state.db.lock();
+        users::touch_login(&conn, &user.id)?;
+        users::by_id(&conn, &user.id)?.expect("just touched")
+    };
+    let user_agent = headers.get(axum::http::header::USER_AGENT).and_then(|v| v.to_str().ok());
+    let (jar, session_id) = start_session(&state, jar, &user, user_agent)?;
+    logger::scoped("auth").info(format!("{} signed in with a password", user.email));
+
+    let token = if body.client.as_deref() == Some("cli") {
+        Some(state.crypto.sign_token(&session_id))
+    } else {
+        None
+    };
+
+    Ok((jar, Json(json!({ "user": public_user(&user), "token": token }))))
+}
+
+#[derive(Deserialize)]
+struct SetPasswordBody {
+    #[serde(rename = "currentPassword")]
+    current_password: Option<String>,
+    #[serde(rename = "newPassword")]
+    new_password: Option<String>,
+}
+
+/// Settings → set or change the signed-in user's password. Requires the
+/// current password only if one is already set — an account that has never
+/// had one (signed up via code or OAuth) can add one with no extra proof,
+/// same as any other "add a sign-in method" action while already
+/// authenticated.
+async fn set_password(user: AuthUser, State(state): State<SharedState>, Json(body): Json<SetPasswordBody>) -> AppResult<Json<Value>> {
+    let new_password = body.new_password.as_deref().unwrap_or("");
+    validate_password(new_password)?;
+
+    let conn = state.db.lock();
+    let current = users::by_id(&conn, &user.user.id)?.ok_or_else(|| AppError::unauthorized("Not signed in"))?;
+    if let Some(existing_hash) = &current.password_hash {
+        let supplied = body.current_password.as_deref().unwrap_or("");
+        if !verify_password(supplied, existing_hash) {
+            return Err(AppError::bad_request("invalid_password", "Current password is not correct"));
+        }
+    }
+
+    let hash = hash_password(new_password);
+    users::set_password(&conn, &user.user.id, Some(&hash))?;
+    drop(conn);
+
+    logger::scoped("auth").info(format!(
+        "{} {} their password",
+        current.email,
+        if current.password_hash.is_some() { "changed" } else { "set" }
+    ));
+    Ok(Json(json!({ "ok": true })))
+}
+
+/// Short-lived signed proof that a password-reset code was just verified
+/// for this email — same idea as `oauth_state`, just bridging the gap
+/// between "the code checked out" and "here's the new password" now that
+/// those are two separate screens instead of one combined step. Stateless
+/// (HMAC-signed, not a DB row) and single-purpose: the `"password-reset"`
+/// derived key isn't used for anything else, so this token is worthless
+/// for any other endpoint even if intercepted.
+fn password_reset_token(state: &SharedState, email: &str) -> String {
+    let nonce = format!("{email}:{}", now_ms());
+    format!("{}.{}", URL_SAFE_NO_PAD.encode(&nonce), state.crypto.hmac(&nonce, "password-reset"))
+}
+
+fn verify_password_reset_token(state: &SharedState, raw: &str, email: &str) -> bool {
+    let Some((payload, signature)) = raw.split_once('.') else { return false };
+    let Ok(nonce_bytes) = URL_SAFE_NO_PAD.decode(payload) else { return false };
+    let Ok(nonce) = String::from_utf8(nonce_bytes) else { return false };
+    if !safe_equal(&state.crypto.hmac(&nonce, "password-reset"), signature) {
+        return false;
+    }
+    let Some((nonce_email, issued_at)) = nonce.split_once(':') else { return false };
+    let Ok(issued_at) = issued_at.parse::<i64>() else { return false };
+    nonce_email == email && now_ms() - issued_at <= 10 * 60 * 1000
+}
+
+#[derive(Deserialize)]
+struct ResetPasswordVerifyBody {
+    email: Option<String>,
+    code: Option<String>,
+}
+
+/// Forgot-password step 2 of 3: checks the emailed code (requested via the
+/// ordinary `/api/auth/login` with `forceCode`, same as any other code) and
+/// hands back a short-lived token proving that — but does **not** start a
+/// session or touch the password yet. Deliberately separate from `verify`:
+/// this flow ends by dropping the user back at the sign-in screen to log in
+/// fresh with their new password, not by signing them in here.
+async fn reset_password_verify(State(state): State<SharedState>, Json(body): Json<ResetPasswordVerifyBody>) -> AppResult<Json<Value>> {
+    let email = normalize_email(body.email.as_deref().unwrap_or(""));
+    let code = body.code.as_deref().unwrap_or("").trim().to_string();
+    if email.is_empty() || code.is_empty() {
+        return Err(AppError::bad_request("invalid_request", "Email and code are required"));
+    }
+
+    let record = {
+        let conn = state.db.lock();
+        login_codes::latest_for_email(&conn, &email)?
+    };
+    let Some(record) = record else {
+        return Err(AppError::bad_request("code_not_found", "Request a new code"));
+    };
+    if record.expires_at < now_ms() {
+        return Err(AppError::bad_request("code_expired", "That code has expired"));
+    }
+    if record.attempts >= 5 {
+        return Err(AppError::new(
+            StatusCode::TOO_MANY_REQUESTS,
+            "too_many_attempts",
+            "Too many attempts — request a new code",
+        ));
+    }
+    if !safe_equal(&record.code_hash, &state.crypto.hash_code(&code)) {
+        let conn = state.db.lock();
+        login_codes::bump_attempts(&conn, &record.id)?;
+        return Err(AppError::bad_request("invalid_code", "That code is not correct"));
+    }
+
+    let conn = state.db.lock();
+    login_codes::consume(&conn, &record.id)?;
+    // Forgetting a password only makes sense for an account that has one —
+    // this flow never creates an account (signup already owns that).
+    if users::by_email(&conn, &email)?.is_none() {
+        return Err(AppError::new(StatusCode::NOT_FOUND, "account_not_found", "No account for that email"));
+    }
+
+    Ok(Json(json!({ "ok": true, "token": password_reset_token(&state, &email) })))
+}
+
+#[derive(Deserialize)]
+struct ResetPasswordConfirmBody {
+    email: Option<String>,
+    token: Option<String>,
+    #[serde(rename = "newPassword")]
+    new_password: Option<String>,
+}
+
+/// Forgot-password step 3 of 3: spends the token `reset_password_verify`
+/// issued to actually set the new password. No session is created — the
+/// dashboard sends the user back to the sign-in screen after this succeeds,
+/// same as changing a password anywhere else means using it fresh next
+/// time, not being carried in on the change itself.
+async fn reset_password_confirm(State(state): State<SharedState>, Json(body): Json<ResetPasswordConfirmBody>) -> AppResult<Json<Value>> {
+    let email = normalize_email(body.email.as_deref().unwrap_or(""));
+    let token = body.token.as_deref().unwrap_or("");
+    if !verify_password_reset_token(&state, token, &email) {
+        return Err(AppError::bad_request("invalid_token", "That reset attempt has expired — start over"));
+    }
+
+    let new_password = body.new_password.as_deref().unwrap_or("");
+    validate_password(new_password)?;
+
+    let conn = state.db.lock();
+    let user = users::by_email(&conn, &email)?.ok_or_else(|| AppError::not_found("Account not found"))?;
+    let hash = hash_password(new_password);
+    users::set_password(&conn, &user.id, Some(&hash))?;
+
+    logger::scoped("auth").info(format!("{} reset their password", user.email));
+    Ok(Json(json!({ "ok": true })))
+}
+
+/// Settings → delete the signed-in user's own account. Refuses while they
+/// still own any project — same reasoning as `require_admin_or_creator`
+/// gating project deletion: deleting the account out from under a project
+/// would leave it ownerless, so the account has to go last, not first.
+/// Sessions and connected Git accounts cascade automatically — see the doc
+/// comment on `users::delete`.
+async fn delete_account(user: AuthUser, State(state): State<SharedState>, jar: CookieJar) -> AppResult<(CookieJar, Json<Value>)> {
+    let conn = state.db.lock();
+    let owned = projects::by_creator(&conn, &user.user.id)?;
+    if !owned.is_empty() {
+        let names = owned.iter().map(|p| p.name.as_str()).collect::<Vec<_>>().join(", ");
+        return Err(AppError::bad_request(
+            "projects_remain",
+            format!(
+                "Delete your project{} first: {names}",
+                if owned.len() == 1 { "" } else { "s" }
+            ),
+        ));
+    }
+
+    users::delete(&conn, &user.user.id)?;
+    drop(conn);
+    logger::scoped("auth").info(format!("{} deleted their account", user.user.email));
+
+    let jar = end_session(&state, jar);
+    Ok((jar, Json(json!({ "ok": true }))))
 }
 
 async fn logout(State(state): State<SharedState>, jar: CookieJar) -> (CookieJar, Json<Value>) {
@@ -333,25 +631,44 @@ async fn github_callback(State(state): State<SharedState>, jar: CookieJar, heade
             Ok(v) => v,
             Err(err) => return login_fail(&state, &err.message).into_response(),
         };
-        save_integration(&state, &user.id, &profile, &token);
-        logger::scoped("auth").info(format!("{} signed in via GitHub", user.email));
+        // A conflicting GitHub login isn't fatal here — the account still
+        // signed in fine by email, it just doesn't walk away with the Git
+        // attachment. They can retry "Connect with GitHub OAuth" from
+        // Settings and see exactly why it's refused there.
+        match save_integration(&state, &user.id, &profile, &token) {
+            Ok(()) => logger::scoped("auth").info(format!("{} signed in via GitHub", user.email)),
+            Err(msg) => logger::scoped("auth").info(format!("{} signed in via GitHub, but not attached: {msg}", user.email)),
+        }
         return (jar, Redirect::to(&format!("{}/", state.config.dashboard_url))).into_response();
     }
 
     let Some((user, _)) = resolve_user(&state, &headers, &jar) else {
         return login_fail(&state, "Sign in before connecting GitHub").into_response();
     };
-    save_integration(&state, &user.id, &profile, &token);
+    if let Err(msg) = save_integration(&state, &user.id, &profile, &token) {
+        return Redirect::to(&format!("{}/settings/git?error={}", state.config.dashboard_url, urlencoding::encode(&msg))).into_response();
+    }
     Redirect::to(&format!("{}/settings/git?connected=1", state.config.dashboard_url)).into_response()
 }
 
-fn save_integration(state: &SharedState, user_id: &str, profile: &github::GhUser, token: &str) {
+/// Attaches a GitHub account to `user_id`. Errs (without touching the DB)
+/// if that exact GitHub login is already connected to a *different*
+/// workspace member — one GitHub account can't back two dashboard
+/// accounts at once. Re-attaching the same login to the same user (a
+/// fresh token, most commonly) replaces the old row instead of tripping
+/// that check.
+fn save_integration(state: &SharedState, user_id: &str, profile: &github::GhUser, token: &str) -> Result<(), String> {
     let conn = state.db.lock();
-    if let Ok(existing) = integrations::for_user(&conn, user_id) {
-        if let Some(dup) = existing.into_iter().find(|i| i.provider == "github" && i.login == profile.login) {
-            let _ = integrations::delete(&conn, &dup.id);
+    let mine = integrations::for_user(&conn, user_id).unwrap_or_default();
+    if let Some(dup) = mine.into_iter().find(|i| i.provider == "github" && i.login == profile.login) {
+        let _ = integrations::delete(&conn, &dup.id);
+    } else if let Ok(Some(other)) = integrations::by_login(&conn, "github", &profile.login) {
+        if other.user_id != user_id {
+            let owner = users::by_id(&conn, &other.user_id).ok().flatten().map(|u| u.email).unwrap_or_else(|| "another workspace member".to_string());
+            return Err(format!("{} is already connected to {owner}'s account", profile.login));
         }
     }
+
     let _ = integrations::create(
         &conn,
         integrations::NewIntegration {
@@ -366,6 +683,7 @@ fn save_integration(state: &SharedState, user_id: &str, profile: &github::GhUser
             created_at: now_ms(),
         },
     );
+    Ok(())
 }
 
 /// Google is identity only — it grants no repository access.
@@ -416,4 +734,38 @@ async fn google_callback(State(state): State<SharedState>, jar: CookieJar, heade
     };
     logger::scoped("auth").info(format!("{} signed in via Google", user.email));
     (jar, Redirect::to(&format!("{}/", state.config.dashboard_url))).into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_password;
+
+    #[test]
+    fn accepts_a_password_meeting_every_rule() {
+        assert!(validate_password("Correct1!").is_ok());
+    }
+
+    #[test]
+    fn rejects_too_short() {
+        let err = validate_password("Sh0rt!").unwrap_err();
+        assert!(err.message.contains("at least 8 characters"), "{}", err.message);
+    }
+
+    #[test]
+    fn rejects_missing_uppercase() {
+        let err = validate_password("lowercase1!").unwrap_err();
+        assert!(err.message.contains("uppercase"), "{}", err.message);
+    }
+
+    #[test]
+    fn rejects_missing_lowercase() {
+        let err = validate_password("UPPERCASE1!").unwrap_err();
+        assert!(err.message.contains("lowercase"), "{}", err.message);
+    }
+
+    #[test]
+    fn rejects_missing_special_character() {
+        let err = validate_password("Password123").unwrap_err();
+        assert!(err.message.contains("special character"), "{}", err.message);
+    }
 }

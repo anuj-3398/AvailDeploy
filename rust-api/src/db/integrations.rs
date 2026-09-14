@@ -47,6 +47,20 @@ pub fn for_user(conn: &Connection, user_id: &str) -> rusqlite::Result<Vec<GitInt
     rows.collect()
 }
 
+/// Whoever in the workspace (any user, not just the caller) already has this
+/// exact provider account connected, if anyone — used to keep one GitHub
+/// account from being connected to two different dashboard accounts at
+/// once. Login comparison is case-insensitive, matching GitHub's own
+/// username rules.
+pub fn by_login(conn: &Connection, provider: &str, login: &str) -> rusqlite::Result<Option<GitIntegration>> {
+    conn.query_row(
+        "SELECT * FROM git_integrations WHERE provider = ? AND login = ? COLLATE NOCASE LIMIT 1",
+        params![provider, login],
+        |row| GitIntegration::from_row(row),
+    )
+    .optional()
+}
+
 /// Any integration in the workspace — used for shared repo access.
 pub fn any(conn: &Connection) -> rusqlite::Result<Option<GitIntegration>> {
     conn.query_row(

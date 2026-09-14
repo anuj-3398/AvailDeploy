@@ -49,6 +49,7 @@ export interface User {
   name: string | null;
   avatarUrl: string | null;
   role: string;
+  hasPassword: boolean;
 }
 
 /** Same shape as `User` — a separate type since it's a read-only listing of
@@ -142,11 +143,44 @@ export interface Project {
   previewDeploys: boolean;
   productionUrl: string;
   createdBy: { id: string; name: string | null; email: string } | null;
+  /** Set while an ownership transfer this project's admin/creator started
+   * is waiting on the recipient to accept it. */
+  pendingTransfer: {
+    id: string;
+    toUser: { id: string; name: string | null; email: string } | null;
+    createdAt: number;
+  } | null;
   createdAt: number;
   updatedAt: number;
   productionDeployment: Deployment | null;
   latestDeployment: Deployment | null;
   deploymentCount: number;
+}
+
+export type NotificationType =
+  | 'transfer_requested'
+  | 'transfer_accepted'
+  | 'transfer_declined'
+  | 'transfer_cancelled'
+  | 'deployment_ready'
+  | 'deployment_error'
+  | 'deployment_triggered'
+  | 'comment';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  projectId: string | null;
+  deploymentId: string | null;
+  transferId: string | null;
+  /** The transfer's own live status — not the same as `read`. A read
+   * notification can still be about a pending transfer; gate Accept/Decline
+   * on this, not on `read`. */
+  transferStatus: 'pending' | 'accepted' | 'declined' | 'cancelled' | null;
+  read: boolean;
+  createdAt: number;
 }
 
 export interface Repo {
@@ -209,16 +243,45 @@ export const api = {
       devEcho: boolean;
       mailDelivery: string;
     }>('/api/auth/config'),
-  requestCode: (email: string, intent: 'login' | 'signup' = 'login') =>
-    request<{ ok: boolean; delivered: boolean; intent: string; code?: string }>(
-      '/api/auth/login',
-      { method: 'POST', ...json({ email, intent }) }
-    ),
-  verifyCode: (email: string, code: string) =>
+  requestCode: (email: string, intent: 'login' | 'signup' = 'login', forceCode = false) =>
+    request<{
+      ok: boolean;
+      delivered: boolean;
+      intent: string;
+      method: 'code' | 'password';
+      code?: string;
+    }>('/api/auth/login', { method: 'POST', ...json({ email, intent, forceCode }) }),
+  verifyCode: (email: string, code: string, password?: string) =>
     request<{ user: User }>('/api/auth/verify', {
+      method: 'POST',
+      ...json({ email, code, password }),
+    }),
+  loginWithPassword: (email: string, password: string) =>
+    request<{ user: User }>('/api/auth/login/password', {
+      method: 'POST',
+      ...json({ email, password }),
+    }),
+  setPassword: (newPassword: string, currentPassword?: string) =>
+    request<{ ok: boolean }>('/api/auth/password', {
+      method: 'POST',
+      ...json({ newPassword, currentPassword }),
+    }),
+  /** Forgot-password step 2 of 3 — checks the code, hands back a short-lived
+   * token for step 3. No session; see `confirmPasswordReset`. */
+  verifyPasswordResetCode: (email: string, code: string) =>
+    request<{ ok: boolean; token: string }>('/api/auth/password/reset/verify', {
       method: 'POST',
       ...json({ email, code }),
     }),
+  /** Forgot-password step 3 of 3 — spends the token to set the new
+   * password. Still no session; sign in fresh with it afterward. */
+  confirmPasswordReset: (email: string, token: string, newPassword: string) =>
+    request<{ ok: boolean }>('/api/auth/password/reset/confirm', {
+      method: 'POST',
+      ...json({ email, token, newPassword }),
+    }),
+  deleteAccount: () =>
+    request<{ ok: boolean }>('/api/auth/account', { method: 'DELETE' }),
   me: () =>
     request<{ user: User; integrations: Integration[] }>('/api/auth/me'),
   logout: () => request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' }),
@@ -282,6 +345,16 @@ export const api = {
     }),
   deleteProject: (key: string) =>
     request<{ ok: boolean }>(`/api/projects/${key}`, { method: 'DELETE' }),
+  transferProject: (key: string, userId: string) =>
+    request<{ project: Project }>(`/api/projects/${key}/transfer`, {
+      method: 'POST',
+      ...json({ userId }),
+    }),
+  cancelTransfer: (key: string) =>
+    request<{ project: Project }>(`/api/projects/${key}/transfer/cancel`, {
+      method: 'POST',
+      ...json({}),
+    }),
   deploy: (key: string, body: Record<string, unknown> = {}) =>
     request<{ deployment: Deployment }>(`/api/projects/${key}/deploy`, {
       method: 'POST',
@@ -418,5 +491,24 @@ export const api = {
   deleteComment: (id: string, commentId: string) =>
     request<{ ok: boolean }>(`/api/deployments/${id}/comments/${commentId}`, {
       method: 'DELETE',
+    }),
+
+  /* notifications */
+  notifications: () =>
+    request<{ notifications: AppNotification[]; unreadCount: number }>(
+      '/api/notifications'
+    ),
+  markNotificationRead: (id: string) =>
+    request<{ ok: boolean }>(`/api/notifications/${id}/read`, { method: 'POST' }),
+  markAllNotificationsRead: () =>
+    request<{ ok: boolean }>('/api/notifications/read-all', { method: 'POST' }),
+  acceptTransfer: (transferId: string) =>
+    request<{ ok: boolean; project: Project }>(
+      `/api/notifications/transfers/${transferId}/accept`,
+      { method: 'POST' }
+    ),
+  declineTransfer: (transferId: string) =>
+    request<{ ok: boolean }>(`/api/notifications/transfers/${transferId}/decline`, {
+      method: 'POST',
     }),
 };

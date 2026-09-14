@@ -3,14 +3,15 @@
 use std::collections::HashSet;
 
 use axum::extract::{Path, State};
+use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::auth::AuthUser;
-use crate::db::integrations;
 use crate::db::types::GitIntegration;
+use crate::db::{integrations, users};
 use crate::error::{AppError, AppResult};
 use crate::github;
 use crate::ids::new_integration_id;
@@ -56,7 +57,18 @@ async fn connect_token(user: AuthUser, State(state): State<SharedState>, Json(bo
 
     let conn = state.db.lock();
     if let Some(existing) = integrations::for_user(&conn, &user.user.id)?.into_iter().find(|i| i.login == profile.login) {
+        // Re-connecting the same GitHub account to yourself (e.g. a new
+        // token) replaces the old row rather than tripping the check below.
         integrations::delete(&conn, &existing.id)?;
+    } else if let Some(other) = integrations::by_login(&conn, "github", &profile.login)? {
+        if other.user_id != user.user.id {
+            let owner = users::by_id(&conn, &other.user_id)?.map(|u| u.email).unwrap_or_else(|| "another workspace member".to_string());
+            return Err(AppError::new(
+                StatusCode::CONFLICT,
+                "github_already_connected",
+                format!("{} is already connected to {owner}'s account", profile.login),
+            ));
+        }
     }
 
     let id = new_integration_id();

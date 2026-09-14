@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Project } from '../api.ts';
+import { NavIcon, navIcons } from './ui.tsx';
 
 /**
  * Project picker in the top bar: a searchable list, the current project
@@ -161,6 +162,16 @@ export function ProjectSwitcher({
               <rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
             </svg>
             All Projects
+          </button>
+          <button
+            className="switcher-create"
+            onClick={() => {
+              setOpen(false);
+              navigate('/myprojects');
+            }}
+          >
+            <NavIcon path={navIcons.mine} />
+            My Projects
           </button>
           <button
             className="switcher-create"

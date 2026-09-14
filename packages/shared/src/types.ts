@@ -36,6 +36,9 @@ export interface User {
   role: UserRole;
   created_at: number;
   last_login_at: number | null;
+  /** Scrypt hash, or `null` if this account only ever signed in via an
+   * emailed code or GitHub/Google OAuth. */
+  password_hash: string | null;
 }
 
 export interface Session {

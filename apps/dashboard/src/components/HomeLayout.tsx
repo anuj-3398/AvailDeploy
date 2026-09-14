@@ -4,6 +4,7 @@ import { NavIcon, navIcons } from '../components/ui.tsx';
 
 const NAV = [
   { to: '', label: 'All Projects', path: navIcons.overview, end: true },
+  { to: 'myprojects', label: 'My Projects', path: navIcons.mine },
   { to: 'deployments', label: 'Deployments', path: navIcons.deployments },
   { to: 'logs', label: 'Logs', path: navIcons.logs },
   { to: 'env', label: 'Environment Variables', path: navIcons.env },

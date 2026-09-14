@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, type Integration, type Member } from '../api.ts';
-import { Alert, Spinner, TimeAgo } from '../components/ui.tsx';
+import { Alert, PasswordField, Spinner, TimeAgo } from '../components/ui.tsx';
 
 function initials(value: string): string {
   return value
@@ -41,8 +41,13 @@ export function GitSettings() {
 
   useEffect(() => {
     void load();
-    if (new URLSearchParams(window.location.search).get('connected')) {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('connected')) {
       setNotice('GitHub account connected.');
+    }
+    const oauthError = params.get('error');
+    if (oauthError) {
+      setError(oauthError);
     }
   }, [load]);
 
@@ -175,12 +180,11 @@ export function GitSettings() {
                 . Tokens are encrypted at rest with AES-256-GCM.
               </p>
               <div className="field">
-                <input
-                  className="input mono"
-                  type="password"
+                <PasswordField
+                  className="mono"
                   placeholder="ghp_…"
                   value={token}
-                  onChange={(e) => setToken(e.target.value)}
+                  onChange={setToken}
                 />
               </div>
             </div>
@@ -208,10 +212,10 @@ export function GitSettings() {
         </div>
         <div className="card-body muted small">
           Role is workspace-wide — the same for every project, not set per
-          project. The first person to ever sign in is the <strong>owner</strong>;
+          project. The first person to ever sign in is the <strong>admin</strong>;
           everyone else who signs in is a <strong>member</strong>. Deleting a
           project or removing one of its custom domains needs either the
-          owner, or whoever originally created that specific project — a
+          admin, or whoever originally created that specific project — a
           member can't touch a project someone else on the workspace
           created. Everything else — deploying, editing env vars,
           connecting Git, commenting — is the same for both.
