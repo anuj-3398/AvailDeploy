@@ -13,6 +13,7 @@ import { AuthContext } from './auth.ts';
 import { ProjectsContext } from './projects.ts';
 import { AccountMenu } from './components/AccountMenu.tsx';
 import { HomeLayout } from './components/HomeLayout.tsx';
+import { NotificationBell } from './components/NotificationBell.tsx';
 import { ProjectLayout } from './components/ProjectLayout.tsx';
 import { ProjectSwitcher } from './components/ProjectSwitcher.tsx';
 import { Logo } from './components/ui.tsx';
@@ -21,10 +22,12 @@ import { AllDeployments } from './pages/AllDeployments.tsx';
 import { AllDomains } from './pages/AllDomains.tsx';
 import { AllEnvVars } from './pages/AllEnvVars.tsx';
 import { AllLogs } from './pages/AllLogs.tsx';
+import { AccountSettings } from './pages/AccountSettings.tsx';
 import { DeploymentPage } from './pages/DeploymentPage.tsx';
 import { Docs } from './pages/Docs.tsx';
 import { GitSettings } from './pages/GitSettings.tsx';
 import { Login } from './pages/Login.tsx';
+import { MyProjects } from './pages/MyProjects.tsx';
 import { NewProject } from './pages/NewProject.tsx';
 import { ProjectDeployments } from './pages/ProjectDeployments.tsx';
 import { ProjectLogs } from './pages/ProjectLogs.tsx';
@@ -70,6 +73,7 @@ function Topbar({
       <NavLink to="/settings/git" className="topbar-link">
         Git
       </NavLink>
+      <NotificationBell />
       <AccountMenu user={user} onSignOut={onSignOut} />
     </header>
   );
@@ -199,11 +203,13 @@ function App() {
           <Routes>
             <Route path="/" element={<HomeLayout />}>
               <Route index element={<Projects />} />
+              <Route path="myprojects" element={<MyProjects />} />
               <Route path="deployments" element={<AllDeployments />} />
               <Route path="logs" element={<AllLogs />} />
               <Route path="env" element={<AllEnvVars />} />
               <Route path="domains" element={<AllDomains />} />
               <Route path="settings/git" element={<GitSettings />} />
+              <Route path="settings/account" element={<AccountSettings />} />
             </Route>
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="/projects" element={<Navigate to="/" replace />} />

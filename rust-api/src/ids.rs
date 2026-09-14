@@ -49,6 +49,12 @@ pub fn new_integration_id() -> String {
 pub fn new_comment_id() -> String {
     id_default("cmt")
 }
+pub fn new_transfer_id() -> String {
+    id_default("xfer")
+}
+pub fn new_notification_id() -> String {
+    id_default("ntf")
+}
 
 /// `My Cool App` -> `my-cool-app`; safe to use as a hostname label.
 pub fn slugify(input: &str) -> String {

@@ -101,16 +101,16 @@ fn escape_regex(s: &str) -> String {
     out
 }
 
-struct CheckResult {
-    matched: bool,
-    version: Option<String>,
-}
-
-fn check_item(dir: &Path, item: &DetectionItem) -> CheckResult {
+/// Whether `item` matches under `dir` — a `matchPackage` (dependency
+/// version pin, checked via regex against `package.json`) or `matchContent`
+/// (a regex against some other file). Neither `detect_framework` nor
+/// `DetectionResult` surfaces *which* version matched, only whether the
+/// framework as a whole was detected, so this reports just that.
+fn check_item(dir: &Path, item: &DetectionItem) -> bool {
     let file_path = item.path.clone().unwrap_or_else(|| "package.json".to_string());
     let abs = dir.join(&file_path);
     if !abs.exists() {
-        return CheckResult { matched: false, version: None };
+        return false;
     }
 
     let match_content = if let Some(pkg) = &item.match_package {
@@ -123,25 +123,11 @@ fn check_item(dir: &Path, item: &DetectionItem) -> CheckResult {
     };
 
     match match_content {
-        None => CheckResult { matched: true, version: None },
+        None => true,
         Some(pattern) => {
-            let Ok(content) = std::fs::read_to_string(&abs) else {
-                return CheckResult { matched: false, version: None };
-            };
-            let Ok(re) = regex::RegexBuilder::new(&pattern).multi_line(true).build() else {
-                return CheckResult { matched: false, version: None };
-            };
-            match re.captures(&content) {
-                None => CheckResult { matched: false, version: None },
-                Some(caps) => CheckResult {
-                    matched: true,
-                    version: if item.match_package.is_some() {
-                        caps.get(3).map(|m| m.as_str().to_string())
-                    } else {
-                        None
-                    },
-                },
-            }
+            let Ok(content) = std::fs::read_to_string(&abs) else { return false };
+            let Ok(re) = regex::RegexBuilder::new(&pattern).multi_line(true).build() else { return false };
+            re.is_match(&content)
         }
     }
 }
@@ -165,13 +151,13 @@ pub fn detect_framework(dir: &Path) -> Option<DetectionResult> {
 
         let mut ok = true;
         for item in &preset.detectors.every {
-            if !check_item(dir, item).matched {
+            if !check_item(dir, item) {
                 ok = false;
                 break;
             }
         }
         if ok && !preset.detectors.some.is_empty() {
-            ok = preset.detectors.some.iter().any(|item| check_item(dir, item).matched);
+            ok = preset.detectors.some.iter().any(|item| check_item(dir, item));
         }
         if ok {
             matched.push(preset);

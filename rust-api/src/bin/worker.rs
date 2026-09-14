@@ -19,7 +19,7 @@ use avail_api::builder::{self, executor::LogFn, BuildInput, BuildOutcome, BuildP
 use avail_api::config::{self, Config};
 use avail_api::crypto::Crypto;
 use avail_api::db::types::{Deployment, Project};
-use avail_api::db::{self, deployments, env_vars, events, integrations, projects, Db};
+use avail_api::db::{self, deployments, env_vars, events, integrations, notifications, projects, Db};
 use avail_api::github;
 use avail_api::ids::new_alias_id;
 use avail_api::logger;
@@ -302,6 +302,19 @@ impl Worker {
                             user_id: None,
                         },
                     );
+                    let _ = notifications::create(
+                        &conn,
+                        notifications::NewNotification {
+                            user_id: &project.created_by,
+                            r#type: "deployment_ready",
+                            title: &format!("{} is ready", project.name),
+                            body: Some(&url_for(&self.config, &final_url)),
+                            project_id: Some(&project.id),
+                            deployment_id: Some(&deployment.id),
+                            transfer_id: None,
+                            actor_id: None,
+                        },
+                    );
                 }
 
                 self.cleanup_old_deployments(&project);
@@ -340,6 +353,24 @@ impl Worker {
                         user_id: None,
                     },
                 );
+                // A cancel was somebody's own doing (they clicked Cancel, or
+                // redeployed over it) — no notification needed for a thing
+                // they just did themselves. A real build failure is news.
+                if !aborted {
+                    let _ = notifications::create(
+                        &conn,
+                        notifications::NewNotification {
+                            user_id: &project.created_by,
+                            r#type: "deployment_error",
+                            title: &format!("{} failed to build", project.name),
+                            body: Some(&message),
+                            project_id: Some(&project.id),
+                            deployment_id: Some(&deployment.id),
+                            transfer_id: None,
+                            actor_id: None,
+                        },
+                    );
+                }
                 Ok(())
             }
         }

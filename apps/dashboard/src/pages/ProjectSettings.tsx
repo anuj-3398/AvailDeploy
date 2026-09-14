@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { api, ApiError, type EnvVarRow, type Project } from '../api.ts';
+import { api, ApiError, type EnvVarRow, type Member, type Project } from '../api.ts';
 import { Alert, CopyField, Spinner, TimeAgo } from '../components/ui.tsx';
+import { useAuth } from '../auth.ts';
 import { useProjects } from '../projects.ts';
 
 type Tab = 'general' | 'build' | 'env' | 'domains' | 'git';
@@ -56,6 +57,12 @@ export function ProjectSettings() {
     }
   }
 
+  function onTransferred(updated: Project, message: string) {
+    setError('');
+    setProject(updated);
+    setNotice(message);
+  }
+
   if (!project) {
     return (
       <>
@@ -87,7 +94,12 @@ export function ProjectSettings() {
       <Alert kind="success">{notice}</Alert>
 
       {tab === 'general' ? (
-        <GeneralTab project={project} onSave={save} slug={slug} />
+        <GeneralTab
+          project={project}
+          onSave={save}
+          onTransferred={onTransferred}
+          slug={slug}
+        />
       ) : null}
       {tab === 'build' ? <BuildTab project={project} onSave={save} /> : null}
       {tab === 'env' ? <EnvTab slug={slug} /> : null}
@@ -102,19 +114,28 @@ export function ProjectSettings() {
 function GeneralTab({
   project,
   onSave,
+  onTransferred,
   slug,
 }: {
   project: Project;
   onSave: (patch: Record<string, unknown>) => Promise<void>;
+  onTransferred: (project: Project, message: string) => void;
   slug: string;
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { remove: removeProject, nextSlugAfter } = useProjects();
   const [name, setName] = useState(project.name);
   const [nodeVersion, setNodeVersion] = useState(project.nodeVersion);
   const [confirming, setConfirming] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  // Same rule the server enforces (require_admin_or_creator) — a member
+  // who's neither gets the button disabled rather than an error only after
+  // typing the whole confirmation out.
+  const canDelete = user.role === 'admin' || project.createdBy?.id === user.id;
 
   return (
     <>
@@ -161,22 +182,40 @@ function GeneralTab({
         </div>
       </div>
 
+      <TransferOwnershipCard project={project} onTransferred={onTransferred} />
+
       <div className="card">
         <div className="card-head">
           <h2 style={{ color: 'var(--danger)' }}>Delete project</h2>
         </div>
-        <div className="card-body">
-          <p className="muted small">
-            Removes the project, its deployments and all build artifacts. This
-            cannot be undone.
-          </p>
-        </div>
-        <div className="card-foot">
-          {confirming ? (
-            <>
+        {confirming ? (
+          <>
+            <div className="card-body">
+              <p className="muted small">
+                This action is <strong>permanent and cannot be undone</strong>.
+                Deleting <strong>{project.name}</strong> removes the project
+                itself along with every deployment, build artifact,
+                environment variable, and domain attached to it.
+              </p>
+              <div className="field">
+                <label htmlFor="delete-confirm-name">
+                  Type <code>{project.name}</code> to confirm
+                </label>
+                <input
+                  id="delete-confirm-name"
+                  className="input"
+                  autoFocus
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="card-foot">
               <button
                 className="btn danger"
-                disabled={deleting}
+                disabled={deleting || confirmText !== project.name}
                 onClick={async () => {
                   setDeleting(true);
                   setDeleteError('');
@@ -189,31 +228,187 @@ function GeneralTab({
                   } catch (err) {
                     setDeleting(false);
                     setConfirming(false);
+                    setConfirmText('');
                     setDeleteError(
                       err instanceof ApiError ? err.message : 'Could not delete this project'
                     );
                     return;
                   }
                   removeProject(project.id);
-                  navigate(next ? `/projects/${next}` : '/new', {
+                  navigate(next ? `/projects/${next}` : '/', {
                     replace: true,
                   });
                 }}
               >
-                {deleting ? 'Deleting…' : `Really delete ${project.name}`}
+                {deleting ? 'Deleting…' : 'Confirm Delete'}
               </button>
-              <button className="btn ghost" onClick={() => setConfirming(false)}>
+              <button
+                className="btn ghost"
+                disabled={deleting}
+                onClick={() => {
+                  setConfirming(false);
+                  setConfirmText('');
+                }}
+              >
                 Cancel
               </button>
-            </>
-          ) : (
-            <button className="btn danger" onClick={() => setConfirming(true)}>
-              Delete project
-            </button>
-          )}
-        </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="card-body">
+              <p className="muted small">
+                Removes the project, its deployments and all build artifacts.
+                This cannot be undone.
+                {!canDelete ? (
+                  <>
+                    {' '}
+                    Only the workspace admin or this project's owner can do
+                    that.
+                  </>
+                ) : null}
+              </p>
+            </div>
+            <div className="card-foot">
+              <button
+                className="btn danger"
+                disabled={!canDelete}
+                title={canDelete ? undefined : "Only the workspace admin or this project's owner can delete it"}
+                onClick={() => setConfirming(true)}
+              >
+                Delete project
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </>
+  );
+}
+
+function TransferOwnershipCard({
+  project,
+  onTransferred,
+}: {
+  project: Project;
+  onTransferred: (project: Project, message: string) => void;
+}) {
+  const { user } = useAuth();
+  const [members, setMembers] = useState<Member[] | null>(null);
+  const [targetId, setTargetId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api
+      .members()
+      .then((r) => setMembers(r.members))
+      .catch(() => setMembers([]));
+  }, []);
+
+  // Same gate as the server's own require_creator on the transfer/cancel
+  // endpoints — deliberately creator-only, no admin override (unlike
+  // deleting the project). Hiding it from everyone else isn't just tidier:
+  // it stops the admin from ever landing on a project they don't own and
+  // finding a live Cancel button for a transfer that isn't theirs to touch.
+  const canManage = project.createdBy?.id === user.id;
+  if (!canManage) return null;
+
+  const pending = project.pendingTransfer;
+  const candidates = (members ?? []).filter((m) => m.id !== project.createdBy?.id);
+  const target = candidates.find((m) => m.id === targetId);
+
+  async function requestTransfer() {
+    if (!target) return;
+    setBusy(true);
+    setError('');
+    try {
+      const { project: updated } = await api.transferProject(project.slug, target.id);
+      onTransferred(updated, `Transfer requested — waiting on ${target.name ?? target.email} to accept.`);
+      setTargetId('');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not request this transfer');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancel() {
+    setBusy(true);
+    setError('');
+    try {
+      const { project: updated } = await api.cancelTransfer(project.slug);
+      onTransferred(updated, 'Transfer canceled.');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not cancel this transfer');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h2>Transfer ownership</h2>
+      </div>
+      <div className="card-body">
+        <Alert kind="error">{error}</Alert>
+        {pending ? (
+          <p className="muted small">
+            Waiting on <strong>{pending.toUser?.name ?? pending.toUser?.email ?? 'them'}</strong> to
+            accept. They'll see a notification with Accept/Decline — nothing
+            changes until they respond, and you can pull the request back
+            any time before then.
+          </p>
+        ) : (
+          <p className="muted small">
+            Offers this project to another member of the workspace — once
+            they accept, they become who it's created by, able to delete it
+            or remove its domains without needing the admin. This doesn't
+            change who can deploy or edit it; that's already open to
+            everyone in the workspace.
+          </p>
+        )}
+        {!pending && members === null ? (
+          <Spinner label="Loading team…" />
+        ) : !pending && candidates.length === 0 ? (
+          <p className="small faint">No other workspace members to transfer to yet.</p>
+        ) : !pending ? (
+          <div className="field">
+            <label htmlFor="transfer-target">New owner</label>
+            <select
+              id="transfer-target"
+              className="select"
+              value={targetId}
+              onChange={(e) => setTargetId(e.target.value)}
+            >
+              <option value="">Choose a member…</option>
+              {candidates.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name ? `${m.name} (${m.email})` : m.email}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+      </div>
+      <div className="card-foot">
+        {pending ? (
+          <>
+            <button className="btn" disabled>
+              Transfer in progress
+            </button>
+            <button className="btn ghost" disabled={busy} onClick={cancel}>
+              {busy ? 'Canceling…' : 'Cancel'}
+            </button>
+          </>
+        ) : candidates.length > 0 ? (
+          <button className="btn" disabled={busy || !targetId} onClick={requestTransfer}>
+            {busy ? 'Requesting…' : 'Transfer ownership'}
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

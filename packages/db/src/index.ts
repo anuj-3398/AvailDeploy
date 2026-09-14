@@ -36,6 +36,15 @@ export function getDb(): DatabaseSync {
   if (db) return db;
   mkdirSync(path.dirname(config.dbFile), { recursive: true });
   db = new DatabaseSync(config.dbFile);
+  // Set before anything else: SCHEMA's own `PRAGMA busy_timeout` is three
+  // statements into that batch, so without this, the first two (switching
+  // to WAL, enabling foreign keys — both need a moment's lock) run with
+  // SQLite's default zero-wait busy handler. Multiple processes (avail-api,
+  // avail-worker, apps/proxy) can all open this same file within the same
+  // instant at boot, and one loses that race with an immediate "database is
+  // locked" instead of a brief wait — this closes that window before SCHEMA
+  // ever runs. Mirrors the same fix in rust-api/src/db/mod.rs.
+  db.exec('PRAGMA busy_timeout = 5000');
   db.exec(SCHEMA);
   for (const migration of MIGRATIONS) {
     try {

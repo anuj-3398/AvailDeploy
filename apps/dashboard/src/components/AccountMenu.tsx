@@ -12,6 +12,9 @@ const THEME_ICON: Record<ThemeChoice, string> = {
 
 const HOME_ICON = 'M2.3 8 8 3l5.7 5M4.5 6.4V13h7V6.4';
 
+const ACCOUNT_ICON =
+  'M5.5 7a2.5 2.5 0 1 1 5 0 2.5 2.5 0 0 1-5 0ZM3 13.2c.9-2.4 2.9-3.7 5-3.7s4.1 1.3 5 3.7';
+
 const DOCS_ICON =
   'M2 3.6c1.8-.9 3.6-.9 6 0v9c-2.4-.9-4.2-.9-6 0v-9ZM14 3.6c-1.8-.9-3.6-.9-6 0v9c2.4-.9 4.2-.9 6 0v-9Z';
 
@@ -132,6 +135,15 @@ export function AccountMenu({
               ))}
             </div>
           </div>
+
+          <Link
+            className="account-row"
+            to="/settings/account"
+            onClick={() => setOpen(false)}
+          >
+            <Icon path={ACCOUNT_ICON} />
+            Account settings
+          </Link>
 
           <a
             className="account-row"

@@ -37,6 +37,14 @@ pub fn list(conn: &Connection) -> rusqlite::Result<Vec<Project>> {
     rows.collect()
 }
 
+/// Every project this user created — used to block account deletion until
+/// they're all gone (see `routes::auth::delete_account`).
+pub fn by_creator(conn: &Connection, user_id: &str) -> rusqlite::Result<Vec<Project>> {
+    let mut stmt = conn.prepare("SELECT * FROM projects WHERE created_by = ? ORDER BY created_at ASC")?;
+    let rows = stmt.query_map([user_id], |row| Project::from_row(row))?;
+    rows.collect()
+}
+
 pub fn with_auto_deploy(conn: &Connection) -> rusqlite::Result<Vec<Project>> {
     let mut stmt =
         conn.prepare("SELECT * FROM projects WHERE auto_deploy = 1 AND repo_full_name IS NOT NULL")?;

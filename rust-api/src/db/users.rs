@@ -51,6 +51,12 @@ pub fn touch_login(conn: &Connection, id: &str) -> rusqlite::Result<()> {
     Ok(())
 }
 
+/// Sets (or clears, with `None`) the password hash — see `crypto::hash_password`.
+pub fn set_password(conn: &Connection, id: &str, password_hash: Option<&str>) -> rusqlite::Result<()> {
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", params![password_hash, id])?;
+    Ok(())
+}
+
 /// `name`/`avatar_url` only — the two fields `upsertUser` ever patches.
 pub fn update_profile(
     conn: &Connection,
@@ -63,4 +69,16 @@ pub fn update_profile(
         params![name, avatar_url, id],
     )?;
     by_id(conn, id)
+}
+
+/// Deletes the account. `sessions` and `git_integrations` both declare
+/// `ON DELETE CASCADE` on `user_id` (see schema.rs), so this alone also
+/// signs out every session and disconnects every connected Git account —
+/// no separate cleanup needed for either. Projects are deliberately NOT
+/// cascaded (no FK on `projects.created_by`): the caller must confirm the
+/// user owns none before calling this, same as a real deletion would need
+/// to reassign or destroy them first.
+pub fn delete(conn: &Connection, id: &str) -> rusqlite::Result<()> {
+    conn.execute("DELETE FROM users WHERE id = ?", [id])?;
+    Ok(())
 }

@@ -179,6 +179,35 @@ pub fn random_secret(bytes: usize) -> String {
     hex::encode(buf)
 }
 
+/// Hashes a password for storage: a fresh random 16-byte salt through the
+/// same scrypt cost parameters as key derivation. Format is
+/// `<salt_b64url>.<hash_b64url>` — the salt travels with the hash, so no
+/// separate column is needed and each password gets an independent salt
+/// even though `key_for` caches derived keys by purpose.
+pub fn hash_password(password: &str) -> String {
+    let mut salt = [0u8; 16];
+    rand::rngs::OsRng.fill_bytes(&mut salt);
+    let mut out = [0u8; 32];
+    scrypt::scrypt(password.as_bytes(), &salt, &scrypt_params(), &mut out)
+        .expect("32-byte output is valid for these params");
+    format!("{}.{}", URL_SAFE_NO_PAD.encode(salt), URL_SAFE_NO_PAD.encode(out))
+}
+
+/// Constant-time check against a hash produced by [`hash_password`]. `false`
+/// for a malformed hash rather than panicking — callers turn that into the
+/// same "incorrect password" response as a genuine mismatch.
+pub fn verify_password(password: &str, stored: &str) -> bool {
+    let Some((salt_b64, hash_b64)) = stored.split_once('.') else { return false };
+    let (Ok(salt), Ok(expected)) = (URL_SAFE_NO_PAD.decode(salt_b64), URL_SAFE_NO_PAD.decode(hash_b64)) else {
+        return false;
+    };
+    let mut out = vec![0u8; expected.len()];
+    if scrypt::scrypt(password.as_bytes(), &salt, &scrypt_params(), &mut out).is_err() {
+        return false;
+    }
+    safe_equal(&hex::encode(&out), &hex::encode(&expected))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -212,6 +241,24 @@ mod tests {
         let token = c.sign_token("session-id-123");
         assert_eq!(c.verify_token(&token).as_deref(), Some("session-id-123"));
         assert_eq!(c.verify_token("session-id-123.bad-signature"), None);
+    }
+
+    #[test]
+    fn password_hash_round_trip() {
+        let hash = hash_password("correct horse battery staple");
+        assert!(verify_password("correct horse battery staple", &hash));
+        assert!(!verify_password("wrong password", &hash));
+    }
+
+    #[test]
+    fn password_hashes_are_salted() {
+        // Same password, two hashes — must differ because the salt is random.
+        assert_ne!(hash_password("same password"), hash_password("same password"));
+    }
+
+    #[test]
+    fn verify_password_rejects_malformed_hash() {
+        assert!(!verify_password("anything", "not-a-valid-hash"));
     }
 
     #[test]

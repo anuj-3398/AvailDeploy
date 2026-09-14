@@ -157,7 +157,26 @@ pub fn require_admin_or_creator(user: &User, created_by: &str) -> Result<(), App
         Err(AppError::new(
             StatusCode::FORBIDDEN,
             "admin_required",
-            "Only the workspace admin or whoever created this project can do this",
+            "Only the workspace admin or Owner of this project can delete.",
+        ))
+    }
+}
+
+/// Stricter than `require_admin_or_creator` on purpose — no admin override.
+/// Deleting a project or a domain is "clean up a mess", something an admin
+/// reasonably needs to be able to do on anyone's behalf; handing a project
+/// to someone else is different; it's the creator's call alone, not even
+/// the admin's, precisely so "I'm the admin" can never be the reason a
+/// project you didn't create ends up transferred (or a pending transfer
+/// meant for someone else gets cancelled) out from under its actual owner.
+pub fn require_creator(user: &User, created_by: &str) -> Result<(), AppError> {
+    if user.id == created_by {
+        Ok(())
+    } else {
+        Err(AppError::new(
+            StatusCode::FORBIDDEN,
+            "creator_required",
+            "Only whoever created this project can do this",
         ))
     }
 }
@@ -170,6 +189,7 @@ pub fn public_user(user: &User) -> Value {
         "avatarUrl": user.avatar_url,
         "role": user.role,
         "createdAt": user.created_at,
+        "hasPassword": user.password_hash.is_some(),
     })
 }
 

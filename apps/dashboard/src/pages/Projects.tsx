@@ -7,11 +7,13 @@ import {
   StatusBadge,
   TimeAgo,
 } from '../components/ui.tsx';
+import { useAuth } from '../auth.ts';
 
 const RECENT_PREVIEWS = 5;
 const HOME_PROJECT_LIMIT = 3;
 
 type ViewMode = 'grid' | 'list';
+type Scope = 'all' | 'mine';
 
 /** Most recent activity on a project — a fresh deploy counts more than an old edit. */
 function activityTime(project: Project): number {
@@ -26,9 +28,16 @@ function readStoredView(): ViewMode {
   }
 }
 
-export function Projects() {
-  const [projects, setProjects] = useState<Project[] | null>(null);
-  const [deployments, setDeployments] = useState<Deployment[]>([]);
+/**
+ * Shared by both `/` (every project in the workspace) and `/myprojects`
+ * (only the ones the signed-in user created) — identical layout, just a
+ * different slice of the same data. Ownership is `createdBy`, the same
+ * field the server already uses to gate deleting a project.
+ */
+export function ProjectsView({ scope }: { scope: Scope }) {
+  const { user } = useAuth();
+  const [allProjects, setAllProjects] = useState<Project[] | null>(null);
+  const [allDeployments, setAllDeployments] = useState<Deployment[]>([]);
   const [query, setQuery] = useState('');
   const [view, setView] = useState<ViewMode>(readStoredView);
 
@@ -46,24 +55,30 @@ export function Projects() {
       api.projects().catch(() => ({ projects: [] })),
       api.deployments(RECENT_PREVIEWS).catch(() => ({ deployments: [] })),
     ]);
-    setProjects(p.projects);
-    setDeployments(d.deployments);
+    setAllProjects(p.projects);
+    setAllDeployments(d.deployments);
   }
 
   useEffect(() => {
     void load();
   }, []);
 
-  // Live deployment updates for the whole workspace.
+  const mine = scope === 'mine';
+  const projects = allProjects && mine ? allProjects.filter((p) => p.createdBy?.id === user.id) : allProjects;
+  const projectIds = new Set((projects ?? []).map((p) => p.id));
+  const deployments = mine ? allDeployments.filter((d) => projectIds.has(d.projectId)) : allDeployments;
+
+  // Live deployment updates for the whole workspace, filtered down to just
+  // this scope's own projects on the "mine" page.
   useEffect(() => {
     const source = new EventSource('/api/events');
     source.addEventListener('deployment', (event) => {
       const updated = JSON.parse((event as MessageEvent).data) as Deployment;
-      setDeployments((current) => {
+      setAllDeployments((current) => {
         const rest = current.filter((d) => d.id !== updated.id);
         return [updated, ...rest].slice(0, RECENT_PREVIEWS);
       });
-      setProjects((current) =>
+      setAllProjects((current) =>
         current
           ? current.map((project) =>
               project.id === updated.projectId
@@ -103,11 +118,13 @@ export function Projects() {
   // whole list.
   const filtered = query ? matches : matches.slice(0, HOME_PROJECT_LIMIT);
 
+  const title = mine ? 'My Projects' : 'All Projects';
+
   return (
     <>
       <div className="page-head">
         <div className="stack">
-          <h1>All Projects</h1>
+          <h1>{title}</h1>
           <span className="sub">
             {filtered.length}
             {filtered.length !== projects.length ? ` of ${projects.length}` : ''}{' '}
@@ -161,8 +178,12 @@ export function Projects() {
       {projects.length === 0 ? (
         <div className="card">
           <EmptyState
-            title="No projects yet"
-            description="Import a Git repository to create your first deployment."
+            title={mine ? "You haven't created any projects yet" : 'No projects yet'}
+            description={
+              mine
+                ? 'Projects you import will show up here — other projects in the workspace stay on All Projects.'
+                : 'Import a Git repository to create your first deployment.'
+            }
             action={
               <Link className="btn primary" to="/new">
                 Import Git Repository
@@ -229,6 +250,10 @@ export function Projects() {
       ) : null}
     </>
   );
+}
+
+export function Projects() {
+  return <ProjectsView scope="all" />;
 }
 
 function ProjectCard({ project }: { project: Project }) {

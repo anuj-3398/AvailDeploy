@@ -1,8 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { api, ApiError, type User } from '../api.ts';
-import { Alert, Logo } from '../components/ui.tsx';
+import { Alert, Logo, PasswordField } from '../components/ui.tsx';
+import { PASSWORD_HINT, passwordError } from '../validation.ts';
 
-type Step = 'email' | 'code';
+type Step =
+  | 'email'
+  | 'code'
+  | 'password'
+  | 'reset-email'
+  | 'reset-code'
+  | 'reset-password';
 
 /** Google's brand mark, inlined so the page makes no third-party requests. */
 function GoogleMark() {
@@ -59,6 +66,9 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -68,6 +78,17 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
     googleSignIn: boolean;
     mailDelivery: string;
   } | null>(null);
+
+  // Forgot-password is its own little wizard, deliberately separate from
+  // the ordinary code step: it always asks for the email again (rather than
+  // silently reusing whatever's already in `email`), then a code-only
+  // screen, then a dedicated new-password screen, then drops back to the
+  // sign-in screen instead of signing in directly — see each handler below.
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
 
   useEffect(() => {
     api
@@ -93,12 +114,17 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
     setBusy(true);
     try {
       const result = await api.requestCode(typed, mode);
-      setStep('code');
-      setNotice(
-        result.code
-          ? `Email delivery is not configured, so here is your code: ${result.code}`
-          : `We sent a 6-digit code to ${typed}.`
-      );
+      if (result.method === 'password') {
+        // This account has a password set — no code was sent at all.
+        setStep('password');
+      } else {
+        setStep('code');
+        setNotice(
+          result.code
+            ? `Email delivery is not configured, so here is your code: ${result.code}`
+            : `We sent a 6-digit code to ${typed}.`
+        );
+      }
     } catch (err) {
       const apiError = err instanceof ApiError ? err : null;
       setError(apiError ? apiError.message : 'Could not request a code');
@@ -113,9 +139,24 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
   async function verify(event: React.FormEvent) {
     event.preventDefault();
     setError('');
+    if (mode === 'signup' && newPassword) {
+      const passwordIssue = passwordError(newPassword);
+      if (passwordIssue) {
+        setError(passwordIssue);
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setError('Passwords do not match');
+        return;
+      }
+    }
     setBusy(true);
     try {
-      const { user } = await api.verifyCode(email.trim(), code.trim());
+      const { user } = await api.verifyCode(
+        email.trim(),
+        code.trim(),
+        mode === 'signup' && newPassword ? newPassword : undefined
+      );
       onSignedIn(user);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not sign in');
@@ -123,6 +164,108 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
       setBusy(false);
     }
   }
+
+  async function signInWithPassword(event: React.FormEvent) {
+    event.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const { user } = await api.loginWithPassword(email.trim(), password);
+      onSignedIn(user);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not sign in');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* -------------------------------------------------- forgot password --- */
+
+  function startForgotPassword() {
+    setError('');
+    setNotice('');
+    setPassword('');
+    // Every field in this wizard starts blank, including the email — it's
+    // asked again for real, not quietly carried over from the password
+    // step, so a shared computer doesn't leave the previous field re-filled.
+    setResetEmail('');
+    setResetCode('');
+    setResetToken('');
+    setResetNewPassword('');
+    setResetConfirmPassword('');
+    setStep('reset-email');
+  }
+
+  async function sendResetCode(event: React.FormEvent) {
+    event.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const result = await api.requestCode(resetEmail.trim(), 'login', true);
+      setStep('reset-code');
+      setNotice(
+        result.code
+          ? `Email delivery is not configured, so here is your code: ${result.code}`
+          : `We sent a 6-digit code to ${resetEmail.trim()}.`
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not send a code');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function verifyResetCode(event: React.FormEvent) {
+    event.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      const { token } = await api.verifyPasswordResetCode(resetEmail.trim(), resetCode.trim());
+      setResetToken(token);
+      setNotice('');
+      setResetNewPassword('');
+      setResetConfirmPassword('');
+      setStep('reset-password');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'That code is not correct');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmPasswordReset(event: React.FormEvent) {
+    event.preventDefault();
+    setError('');
+    const passwordIssue = passwordError(resetNewPassword);
+    if (passwordIssue) {
+      setError(passwordIssue);
+      return;
+    }
+    if (resetNewPassword !== resetConfirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    setBusy(true);
+    try {
+      await api.confirmPasswordReset(resetEmail.trim(), resetToken, resetNewPassword);
+      const resetFor = resetEmail.trim();
+      setStep('email');
+      setMode('login');
+      setEmail(resetFor);
+      setResetEmail('');
+      setResetCode('');
+      setResetToken('');
+      setResetNewPassword('');
+      setResetConfirmPassword('');
+      setNotice('Password updated — sign in with your new password.');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not reset your password');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const isResetStep = step === 'reset-email' || step === 'reset-code' || step === 'reset-password';
 
   return (
     <div className="login-wrap">
@@ -132,8 +275,17 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
           Avail Deploy
         </h1>
         <p className="sub">
-          {mode === 'login' ? 'Log in with' : 'Create an account with'} your{' '}
-          {domains.map((d) => `@${d}`).join(' or ')} address
+          {isResetStep
+            ? 'Reset your password'
+            : mode === 'login'
+              ? 'Log in with'
+              : 'Create an account with'}
+          {isResetStep ? null : (
+            <>
+              {' '}
+              your {domains.map((d) => `@${d}`).join(' or ')} address
+            </>
+          )}
         </p>
 
         {step === 'email' ? (
@@ -167,6 +319,7 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
 
         {step === 'email' ? (
           <form onSubmit={requestCode}>
+            <Alert kind="success">{notice}</Alert>
             <div className="field">
               <label htmlFor="email">Email address</label>
               <input
@@ -190,7 +343,7 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
                   ? `Only ${domains.map((d) => `@${d}`).join(' or ')} addresses are allowed`
                   : mode === 'signup'
                     ? 'Anyone on the domain can create an account.'
-                    : ' '}
+                    : ' '}
               </span>
             </div>
             <button
@@ -203,6 +356,155 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
                 : mode === 'signup'
                   ? 'Sign up with Email'
                   : 'Continue with Email'}
+            </button>
+          </form>
+        ) : step === 'password' ? (
+          <form onSubmit={signInWithPassword}>
+            <div className="field">
+              <label htmlFor="password">Password</label>
+              <PasswordField
+                id="password"
+                autoFocus
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={setPassword}
+              />
+            </div>
+            <button
+              className="btn primary"
+              style={{ width: '100%' }}
+              disabled={busy || !password}
+            >
+              {busy ? 'Signing in…' : 'Sign in'}
+            </button>
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ width: '100%', marginTop: 10 }}
+              onClick={startForgotPassword}
+              disabled={busy}
+            >
+              Forgot password?
+            </button>
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ width: '100%', marginTop: 10 }}
+              onClick={() => {
+                setStep('email');
+                setPassword('');
+              }}
+            >
+              Use a different email
+            </button>
+          </form>
+        ) : step === 'reset-email' ? (
+          <form onSubmit={sendResetCode}>
+            <div className="field">
+              <label htmlFor="reset-email">Email address</label>
+              <input
+                id="reset-email"
+                className="input"
+                type="email"
+                autoFocus
+                required
+                autoComplete="email"
+                placeholder={`you@${domains[0]}`}
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+              />
+              <span className="hint">We'll send a 6-digit code to this address.</span>
+            </div>
+            <button
+              className="btn primary"
+              style={{ width: '100%' }}
+              disabled={busy || !resetEmail.trim()}
+            >
+              {busy ? 'Sending…' : 'Send OTP'}
+            </button>
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ width: '100%', marginTop: 10 }}
+              onClick={() => {
+                setStep('email');
+                setResetEmail('');
+              }}
+            >
+              Back to sign in
+            </button>
+          </form>
+        ) : step === 'reset-code' ? (
+          <form onSubmit={verifyResetCode}>
+            <Alert kind="info">{notice}</Alert>
+            <div className="field">
+              <label htmlFor="reset-code">Verification code</label>
+              <input
+                id="reset-code"
+                className="input code-input"
+                inputMode="numeric"
+                autoFocus
+                required
+                maxLength={6}
+                placeholder="000000"
+                value={resetCode}
+                onChange={(e) =>
+                  setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                }
+              />
+            </div>
+            <button
+              className="btn primary"
+              style={{ width: '100%' }}
+              disabled={busy || resetCode.length !== 6}
+            >
+              {busy ? 'Verifying…' : 'Verify code'}
+            </button>
+            <button
+              type="button"
+              className="btn ghost sm"
+              style={{ width: '100%', marginTop: 10 }}
+              onClick={() => {
+                setStep('reset-email');
+                setResetCode('');
+                setNotice('');
+              }}
+            >
+              Use a different email
+            </button>
+          </form>
+        ) : step === 'reset-password' ? (
+          <form onSubmit={confirmPasswordReset}>
+            <div className="field">
+              <label htmlFor="reset-new-password">New password</label>
+              <PasswordField
+                id="reset-new-password"
+                autoFocus
+                required
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                value={resetNewPassword}
+                onChange={setResetNewPassword}
+              />
+              <span className="hint">{PASSWORD_HINT}</span>
+            </div>
+            <div className="field">
+              <label htmlFor="reset-confirm-password">Confirm password</label>
+              <PasswordField
+                id="reset-confirm-password"
+                required
+                autoComplete="new-password"
+                value={resetConfirmPassword}
+                onChange={setResetConfirmPassword}
+              />
+            </div>
+            <button
+              className="btn primary"
+              style={{ width: '100%' }}
+              disabled={busy || !resetNewPassword || !resetConfirmPassword}
+            >
+              {busy ? 'Saving…' : 'Confirm'}
             </button>
           </form>
         ) : (
@@ -224,6 +526,37 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
                 }
               />
             </div>
+            {mode === 'signup' ? (
+              <>
+                <div className="field">
+                  <label htmlFor="new-password">
+                    Password{' '}
+                    <span className="small faint">
+                      (optional — sign in without a code next time)
+                    </span>
+                  </label>
+                  <PasswordField
+                    id="new-password"
+                    autoComplete="new-password"
+                    placeholder="At least 8 characters"
+                    value={newPassword}
+                    onChange={setNewPassword}
+                  />
+                  <span className="hint">{PASSWORD_HINT}</span>
+                </div>
+                {newPassword ? (
+                  <div className="field">
+                    <label htmlFor="confirm-password">Confirm password</label>
+                    <PasswordField
+                      id="confirm-password"
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={setConfirmPassword}
+                    />
+                  </div>
+                ) : null}
+              </>
+            ) : null}
             <button
               className="btn primary"
               style={{ width: '100%' }}
@@ -239,6 +572,8 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
                 setStep('email');
                 setCode('');
                 setNotice('');
+                setNewPassword('');
+                setConfirmPassword('');
               }}
             >
               Use a different email
@@ -246,7 +581,7 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
           </form>
         )}
 
-        {config?.googleSignIn || config?.githubSignIn ? (
+        {!isResetStep && (config?.googleSignIn || config?.githubSignIn) ? (
           <>
             <div className="divider">or</div>
             <div className="provider-buttons">

@@ -15,7 +15,8 @@ export function Docs() {
           <span className="sub">
             Where every screen lives, and the steps for the flows you'll use
             most — creating, navigating and deleting projects, deployments,
-            environment variables and domains, plus who's allowed to do what.
+            environment variables and domains, transferring ownership,
+            notifications, account settings, and who's allowed to do what.
           </span>
         </div>
       </div>
@@ -24,26 +25,30 @@ export function Docs() {
         <section className="docs-section">
           <h2>Dashboard layout</h2>
           <p className="sub">
-            Two shells share the same six-tab sidebar. The workspace{' '}
+            Two shells share the same sidebar shape. The workspace{' '}
             <strong>home</strong> (opened from the <strong>Avail Deploy</strong>{' '}
             logo, or the project switcher's <strong>All Projects</strong>{' '}
-            entry) shows each tab's resource across{' '}
-            <em>every</em> project — Environment Variables and Domains are
-            read-only there, since a variable or domain always belongs to one
-            project. A <strong>project's own shell</strong> shows the same six
+            entry) has <strong>All Projects</strong> and{' '}
+            <strong>My Projects</strong> (the same list, filtered to what you
+            created) plus Deployments/Logs/Environment Variables/Domains/
+            Settings, each showing that resource across <em>every</em>{' '}
+            project — Environment Variables and Domains are read-only there,
+            since a variable or domain always belongs to one project. A{' '}
+            <strong>project's own shell</strong> starts with a{' '}
+            <strong>Home</strong> link back to the workspace, then the same
             tabs scoped to just that project, with full editing.
           </p>
 
           <div className="docs-two-up">
             <div>
               <Frame url="avail.localhost/">
-                <SidebarMockup active="overview" variant="home" />
+                <SidebarMockup active="All Projects" variant="home" />
               </Frame>
               <p className="docs-caption">Workspace home</p>
             </div>
             <div>
               <Frame url="avail.localhost/projects/my-app">
-                <SidebarMockup active="overview" variant="project" />
+                <SidebarMockup active="Overview" variant="project" />
               </Frame>
               <p className="docs-caption">A project's own shell</p>
             </div>
@@ -140,10 +145,18 @@ export function Docs() {
             <strong>removing a custom domain</strong>. Either needs the
             admin, or specifically whoever created that project — a member
             can always clean up their own project, but can't touch one
-            someone else on the workspace created. Anyone else who tries
-            either gets a plain "Only the workspace admin or whoever created
-            this project can do this" response rather than a
-            partially-completed action.
+            someone else on the workspace created. The{' '}
+            <strong>Delete project</strong> button is disabled up front for
+            anyone who doesn't qualify (with a tooltip explaining why),
+            rather than only refusing after the fact — though the server
+            still enforces the same rule regardless of what the button
+            shows.
+          </p>
+          <p className="sub">
+            <strong>Transferring ownership is stricter still</strong> —
+            unlike deleting, the admin gets no override. Only a project's
+            current creator can offer it to someone else; see{' '}
+            <strong>Transfer ownership</strong> below.
           </p>
 
           <Frame url="avail.localhost/projects/my-app/settings">
@@ -234,14 +247,56 @@ export function Docs() {
             <strong>this cannot be undone</strong>. Needs the workspace{' '}
             <strong>admin</strong>, or whoever created this particular
             project — see <strong>Access control</strong> above; anyone else
-            sees the same button but the request is refused, with the
-            reason shown right on the page. Removing a custom domain from a
-            project's <strong>Domains</strong> tab follows the same rule.
+            sees the button disabled outright. Removing a custom domain from
+            a project's <strong>Domains</strong> tab follows the same rule.
+          </p>
+          <p className="sub">
+            Clicking it doesn't delete anything by itself — it opens a
+            confirmation screen in the same spot asking you to{' '}
+            <strong>type the project's name</strong> before{' '}
+            <strong>Confirm Delete</strong> will even enable, so this one
+            can't happen from a stray click.
           </p>
 
           <Frame url="avail.localhost/projects/my-app/settings">
             <DangerZoneMockup />
           </Frame>
+        </section>
+
+        <section className="docs-section">
+          <h2>Transfer ownership</h2>
+          <p className="sub">
+            A project's current creator (only — see{' '}
+            <strong>Access control</strong> above) can hand it to another
+            workspace member from that same Settings page: pick who from{' '}
+            <strong>New owner</strong> and click{' '}
+            <strong>Transfer ownership</strong>. Nothing happens to the
+            project yet — it just sends the recipient a notification with{' '}
+            <strong>Accept</strong> / <strong>Decline</strong>, and only{' '}
+            <strong>Accept</strong> actually changes who it's created by.
+          </p>
+          <p className="sub">
+            While it's waiting on them, the sender's Settings page shows{' '}
+            <strong>Transfer in progress</strong> in place of the transfer
+            form, with a <strong>Cancel</strong> button right next to it —
+            pulling the request back at any point before they respond, no
+            explanation needed.
+          </p>
+
+          <div className="docs-two-up">
+            <div>
+              <Frame url="avail.localhost/projects/my-app/settings">
+                <TransferPendingMockup />
+              </Frame>
+              <p className="docs-caption">Sender's view, while pending</p>
+            </div>
+            <div>
+              <Frame url="notifications">
+                <TransferNotificationMockup />
+              </Frame>
+              <p className="docs-caption">Recipient's notification</p>
+            </div>
+          </div>
         </section>
 
         <section className="docs-section">
@@ -259,16 +314,75 @@ export function Docs() {
         </section>
 
         <section className="docs-section">
+          <h2>Notifications</h2>
+          <p className="sub">
+            The bell icon in the top bar, between <strong>Git</strong> and
+            your avatar, is every notification aimed at you — it covers
+            everything above that happens to a project you created:
+          </p>
+          <ul className="docs-steps">
+            <li>An ownership transfer request, with Accept/Decline right in the list, and the outcome once you (or they) respond</li>
+            <li>One of your deployments going <strong>Ready</strong> or failing</li>
+            <li>A comment on one of your projects</li>
+            <li>A push that triggered a build — not a redeploy you clicked yourself, just ones GitHub set off on its own</li>
+          </ul>
+          <p className="sub">
+            Unread ones carry a dot and a badge on the bell;{' '}
+            <strong>Mark all read</strong> clears both without acting on any
+            of them. Clicking a notification (other than a still-pending
+            transfer request) marks it read and jumps to the project or
+            deployment it's about.
+          </p>
+
+          <Frame url="notifications">
+            <NotificationsMockup />
+          </Frame>
+        </section>
+
+        <section className="docs-section">
           <h2>Account menu</h2>
           <p className="sub">
             The avatar in the top-right corner opens theme (system, light or
-            dark), <strong>Home Page</strong> (the Avail Project site) and
-            this <strong>Docs</strong> page — both open in a new tab — and{' '}
-            <strong>Sign out</strong>.
+            dark), <strong>Account settings</strong>,{' '}
+            <strong>Home Page</strong> (the Avail Project site) and this{' '}
+            <strong>Docs</strong> page — the latter two open in a new tab —
+            and <strong>Sign out</strong>.
           </p>
 
           <Frame url="account">
             <AccountMenuMockup />
+          </Frame>
+        </section>
+
+        <section className="docs-section">
+          <h2>Account settings</h2>
+          <p className="sub">
+            Reached from the account menu above, or{' '}
+            <code>/settings/account</code> directly. Two things live here:
+          </p>
+          <p className="sub">
+            <strong>Password.</strong> Optional, and separate from the
+            emailed sign-in code — collapsed behind a single{' '}
+            <strong>Create Password</strong> button until you click it. Once
+            set, logging in with that email jumps straight to a password
+            prompt instead of waiting on a code (with a{' '}
+            <strong>Forgot password? Email me a code instead</strong> escape
+            hatch on that screen, so it can never lock you out); the button
+            here becomes <strong>Update Password</strong>, which asks for the
+            current one first. Every password needs 8+ characters, an
+            uppercase and lowercase letter, and a special character — every
+            password field has an eye icon to reveal what you typed.
+          </p>
+          <p className="sub">
+            <strong>Delete account.</strong> Two-step, same as deleting a
+            project — permanently removes the account, signs it out
+            everywhere, and disconnects any GitHub account it had connected.
+            Refused outright while it still owns any project; transfer or
+            delete those first.
+          </p>
+
+          <Frame url="avail.localhost/settings/account">
+            <AccountSettingsMockup />
           </Frame>
         </section>
       </div>
@@ -293,14 +407,11 @@ function Frame({ url, children }: { url: string; children: React.ReactNode }) {
   );
 }
 
-const HOME_NAV = [
-  { id: 'overview', home: 'All Projects', project: 'Overview' },
-  { id: 'deployments', home: 'Deployments', project: 'Deployments' },
-  { id: 'logs', home: 'Logs', project: 'Logs' },
-  { id: 'env', home: 'Environment Variables', project: 'Environment Variables' },
-  { id: 'domains', home: 'Domains', project: 'Domains' },
-  { id: 'settings', home: 'Settings', project: 'Settings' },
-];
+// The two shells' item lists no longer line up one-to-one (Home only makes
+// sense inside a project, My Projects only at the workspace level), so
+// each variant is its own list rather than one row mapped two ways.
+const HOME_SIDEBAR = ['All Projects', 'My Projects', 'Deployments', 'Logs', 'Environment Variables', 'Domains', 'Settings'];
+const PROJECT_SIDEBAR = ['Home', 'Overview', 'Deployments', 'Logs', 'Environment Variables', 'Domains', 'Settings'];
 
 function SidebarMockup({
   active,
@@ -309,15 +420,16 @@ function SidebarMockup({
   active: string;
   variant: 'home' | 'project';
 }) {
+  const items = variant === 'home' ? HOME_SIDEBAR : PROJECT_SIDEBAR;
   return (
     <nav className="docs-sidebar-mock">
-      {HOME_NAV.map((item) => (
+      {items.map((label) => (
         <div
-          key={item.id}
-          className={`side-link${item.id === active ? ' active' : ''}`}
+          key={label}
+          className={`side-link${label === active ? ' active' : ''}`}
         >
           <span className="docs-dot-icon" />
-          {variant === 'home' ? item.home : item.project}
+          {label}
         </div>
       ))}
     </nav>
@@ -464,13 +576,71 @@ function DangerZoneMockup() {
         <h2 style={{ color: 'var(--danger)' }}>Delete project</h2>
       </div>
       <div className="card-body muted small">
-        Removes the project, its deployments and all build artifacts. This
-        cannot be undone.
-        <br />
-        <span className="faint">Admin, or whoever created this project.</span>
+        This action is <strong>permanent and cannot be undone</strong>.
+        Deleting <strong>my-app</strong> removes the project itself along
+        with every deployment, build artifact, environment variable, and
+        domain attached to it.
+        <div className="field" style={{ marginTop: 10 }}>
+          <label>
+            Type <code>my-app</code> to confirm
+          </label>
+          <span className="input" style={{ display: 'block' }}>
+            my-app
+          </span>
+        </div>
       </div>
       <div className="card-foot">
-        <span className="btn danger">Delete project</span>
+        <span className="btn danger">Confirm Delete</span>
+        <span className="btn ghost">Cancel</span>
+      </div>
+    </div>
+  );
+}
+
+function TransferPendingMockup() {
+  return (
+    <div className="card" style={{ margin: 0 }}>
+      <div className="card-head">
+        <h2>Transfer ownership</h2>
+      </div>
+      <div className="card-body muted small">
+        Waiting on <strong>teammate</strong> to accept. They'll see a
+        notification with Accept/Decline — nothing changes until they
+        respond, and you can pull the request back any time before then.
+      </div>
+      <div className="card-foot">
+        <span className="btn">Transfer in progress</span>
+        <span className="btn ghost">Cancel</span>
+      </div>
+    </div>
+  );
+}
+
+function TransferNotificationMockup() {
+  return (
+    <div
+      className="notif-panel"
+      style={{ position: 'static', width: '100%', boxShadow: 'none', border: 'none' }}
+    >
+      <div className="notif-panel-head">
+        <h3>Notifications</h3>
+      </div>
+      <div className="notif-list">
+        <div className="notif-item unread">
+          <span className="notif-dot" aria-hidden />
+          <div className="notif-item-body">
+            <div className="notif-item-title">
+              anuj@availproject.org wants to transfer my-app to you
+            </div>
+            <div className="notif-item-detail">
+              Accept to take over as its creator, or decline.
+            </div>
+            <div className="notif-item-actions">
+              <span className="btn sm primary">Accept</span>
+              <span className="btn sm ghost">Decline</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -555,9 +725,89 @@ function AccountMenuMockup() {
           <span>☾</span>
         </div>
       </div>
+      <div className="account-row">👤 Account settings</div>
       <div className="account-row">🏠 Home Page</div>
       <div className="account-row">📄 Docs</div>
       <div className="account-row danger">⇥ Sign out</div>
+    </div>
+  );
+}
+
+function NotificationsMockup() {
+  return (
+    <div
+      className="notif-panel"
+      style={{ position: 'static', width: '100%', boxShadow: 'none', border: 'none' }}
+    >
+      <div className="notif-panel-head">
+        <h3>Notifications</h3>
+        <div className="spacer" />
+        <span className="small link">Mark all read</span>
+      </div>
+      <div className="notif-list">
+        <div className="notif-item unread">
+          <span className="notif-dot" aria-hidden />
+          <div className="notif-item-body">
+            <div className="notif-item-title">
+              anuj@availproject.org wants to transfer my-app to you
+            </div>
+            <div className="notif-item-detail">
+              Accept to take over as its creator, or decline.
+            </div>
+            <div className="notif-item-actions">
+              <span className="btn sm primary">Accept</span>
+              <span className="btn sm ghost">Decline</span>
+            </div>
+          </div>
+        </div>
+        <div className="notif-item unread">
+          <span className="notif-dot" aria-hidden />
+          <div className="notif-item-body">
+            <div className="notif-item-title">my-app is ready</div>
+            <div className="notif-item-detail">my-app.avail.localhost:3002</div>
+          </div>
+        </div>
+        <div className="notif-item">
+          <span style={{ width: 7, flex: 'none' }} />
+          <div className="notif-item-body">
+            <div className="notif-item-title">teammate commented on my-app</div>
+            <div className="notif-item-detail">
+              Looks good — approving this preview.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AccountSettingsMockup() {
+  return (
+    <div className="stack" style={{ gap: 14 }}>
+      <div className="card" style={{ margin: 0 }}>
+        <div className="card-head">
+          <h2>Password</h2>
+        </div>
+        <div className="card-body muted small">
+          Create a password so you can sign in with your email address
+          instead of waiting on a one-time code each time.
+        </div>
+        <div className="card-foot">
+          <span className="btn primary">Create Password</span>
+        </div>
+      </div>
+      <div className="card" style={{ margin: 0 }}>
+        <div className="card-head">
+          <h2 style={{ color: 'var(--danger)' }}>Delete account</h2>
+        </div>
+        <div className="card-body muted small">
+          Permanently deletes your account, signs you out everywhere, and
+          disconnects any GitHub account you connected.
+        </div>
+        <div className="card-foot">
+          <span className="btn danger">Delete account</span>
+        </div>
+      </div>
     </div>
   );
 }

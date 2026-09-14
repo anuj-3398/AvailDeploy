@@ -215,4 +215,42 @@ pub const MIGRATIONS: &[&str] = &[
     // sign in), just a friendlier label. Rust-only: apps/proxy never reads
     // `role`. Idempotent — a second run finds no `owner` rows left to touch.
     "UPDATE users SET role = 'admin' WHERE role = 'owner'",
+    // Optional password sign-in, as an alternative to an emailed one-time
+    // code. NULL until the user sets one (at signup or later in Settings).
+    // Rust-only: apps/proxy never reads `password_hash`.
+    "ALTER TABLE users ADD COLUMN password_hash TEXT",
+    // Ownership transfer requests — a project only actually changes hands
+    // once the recipient accepts (see routes::notifications), so this holds
+    // the in-between state. At most one *pending* row per project — the
+    // partial unique index enforces that directly rather than relying on
+    // every call site to check first. Rust-only.
+    r#"CREATE TABLE IF NOT EXISTS project_transfers (
+         id           TEXT PRIMARY KEY,
+         project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+         from_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+         to_user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+         status       TEXT NOT NULL DEFAULT 'pending',
+         created_at   INTEGER NOT NULL,
+         resolved_at  INTEGER
+       )"#,
+    "CREATE INDEX IF NOT EXISTS idx_transfers_project ON project_transfers(project_id, created_at DESC)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_transfers_one_pending ON project_transfers(project_id) WHERE status = 'pending'",
+    // In-app notifications: ownership transfers, deployment outcomes on a
+    // project you created, comments on it, and pushes that triggered a
+    // build. `project_id`/`deployment_id`/`transfer_id`/`actor_id` are all
+    // optional context, only as many as a given `type` needs. Rust-only.
+    r#"CREATE TABLE IF NOT EXISTS notifications (
+         id            TEXT PRIMARY KEY,
+         user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+         type          TEXT NOT NULL,
+         title         TEXT NOT NULL,
+         body          TEXT,
+         project_id    TEXT,
+         deployment_id TEXT,
+         transfer_id   TEXT,
+         actor_id      TEXT,
+         read_at       INTEGER,
+         created_at    INTEGER NOT NULL
+       )"#,
+    "CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC)",
 ];

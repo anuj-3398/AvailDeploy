@@ -24,7 +24,7 @@ use serde_json::{json, Value};
 use crate::auth::{resolve_user, AuthUser};
 use crate::builder;
 use crate::db::types::Deployment;
-use crate::db::{build_logs, comments, deployments, projects, request_logs, users};
+use crate::db::{build_logs, comments, deployments, notifications, projects, request_logs, users};
 use crate::error::{AppError, AppResult};
 use crate::ids::new_comment_id;
 use crate::services::deployments::{promote_to_production, serialize_deployment};
@@ -405,8 +405,29 @@ async fn post_comment(user: AuthUser, State(state): State<SharedState>, Path(id)
         return Err(AppError::bad_request("too_long", "Comment is too long (max 4000 characters)"));
     }
     let conn = state.db.lock();
-    require_deployment(&conn, &id)?;
+    let deployment = require_deployment(&conn, &id)?;
     let comment = comments::create(&conn, &new_comment_id(), &id, &user.user.id, body)?;
+
+    // Tell the project's creator someone commented — unless they're the one
+    // who just did, commenting on your own project isn't news to you.
+    if let Ok(Some(project)) = projects::by_id(&conn, &deployment.project_id) {
+        if project.created_by != user.user.id {
+            let _ = notifications::create(
+                &conn,
+                notifications::NewNotification {
+                    user_id: &project.created_by,
+                    r#type: "comment",
+                    title: &format!("{} commented on {}", user.user.email, project.name),
+                    body: Some(body),
+                    project_id: Some(&project.id),
+                    deployment_id: Some(&deployment.id),
+                    transfer_id: None,
+                    actor_id: Some(&user.user.id),
+                },
+            );
+        }
+    }
+
     Ok((StatusCode::CREATED, Json(json!({ "comment": serialize_comment(&conn, &comment) }))))
 }
 

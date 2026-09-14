@@ -93,10 +93,53 @@ function post<T>(endpoint: string, body: unknown = {}): Promise<T> {
   return apiFetch<T>(endpoint, { method: 'POST', body: JSON.stringify(body) });
 }
 
+/**
+ * Reads a line from stdin without echoing it — a plain `readline` prompt
+ * would show the password as it's typed. Falls back to a normal (visible)
+ * prompt when stdin isn't a TTY (piped input, CI), since raw mode needs a
+ * real terminal.
+ */
+async function promptPassword(label: string): Promise<string> {
+  if (!stdin.isTTY) {
+    const rl = readline.createInterface({ input: stdin, output: stdout });
+    try {
+      return (await rl.question(label)).trim();
+    } finally {
+      rl.close();
+    }
+  }
+  return new Promise((resolve) => {
+    stdout.write(label);
+    stdin.setRawMode(true);
+    stdin.resume();
+    stdin.setEncoding('utf8');
+    let value = '';
+    const onData = (char: string) => {
+      if (char === '\n' || char === '\r' || char === '\u0004') {
+        stdin.setRawMode(false);
+        stdin.pause();
+        stdin.removeListener('data', onData);
+        stdout.write('\n');
+        resolve(value.trim());
+      } else if (char === '\u0003') {
+        // Ctrl+C
+        stdout.write('\n');
+        process.exit(1);
+      } else if (char === '\u007f' || char === '\b') {
+        value = value.slice(0, -1);
+      } else {
+        value += char;
+      }
+    };
+    stdin.on('data', onData);
+  });
+}
+
 /* ------------------------------------------------------------- commands */
 
 async function login(): Promise<void> {
   const rl = readline.createInterface({ input: stdin, output: stdout });
+  let email = '';
   try {
     const info = await apiFetch<{ allowedDomains: string[] }>(
       '/api/auth/config'
@@ -107,11 +150,26 @@ async function login(): Promise<void> {
       )
     );
 
-    const email = (await rl.question('Email: ')).trim();
-    const result = await post<{ delivered: boolean; code?: string }>(
+    email = (await rl.question('Email: ')).trim();
+    const result = await post<{ delivered: boolean; code?: string; method?: 'code' | 'password' }>(
       '/api/auth/login',
       { email }
     );
+
+    // An account with a password set skips the emailed code entirely.
+    if (result.method === 'password') {
+      rl.close();
+      const password = await promptPassword('Password: ');
+      const verified = await post<{ user: { email: string }; token: string }>(
+        '/api/auth/login/password',
+        { email, password, client: 'cli' }
+      );
+      config = { ...config, token: verified.token, email: verified.user.email };
+      saveConfig(config);
+      console.log(color.green(`Signed in as ${verified.user.email}`));
+      return;
+    }
+
     if (result.code) {
       console.log(
         color.yellow(`Email delivery is not configured. Your code: ${result.code}`)

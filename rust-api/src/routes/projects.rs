@@ -9,12 +9,12 @@ use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
-use crate::auth::{require_admin_or_creator, AuthUser};
+use crate::auth::{require_admin_or_creator, require_creator, AuthUser};
 use crate::builder;
 use crate::config::Config;
 use crate::crypto::random_secret;
 use crate::db::types::Project;
-use crate::db::{aliases, deployments, events, now_ms, projects, request_logs, users};
+use crate::db::{aliases, deployments, events, notifications, now_ms, projects, request_logs, transfers, users};
 use crate::error::{AppError, AppResult};
 use crate::github;
 use crate::ids::{new_alias_id, new_project_id, slugify};
@@ -28,6 +28,14 @@ pub fn serialize_project(conn: &Connection, cfg: &Config, project: &Project) -> 
     let production = deployments::current_production(conn, &project.id).ok().flatten();
     let latest = deployments::for_project(conn, &project.id, 1, 0).ok().and_then(|mut v| v.pop());
     let creator = users::by_id(conn, &project.created_by).ok().flatten();
+    let pending_transfer = transfers::pending_for_project(conn, &project.id).ok().flatten().map(|t| {
+        let to = users::by_id(conn, &t.to_user_id).ok().flatten();
+        json!({
+            "id": t.id,
+            "toUser": to.map(|u| json!({ "id": u.id, "name": u.name, "email": u.email })),
+            "createdAt": t.created_at,
+        })
+    });
     let repo = project.repo_full_name.as_ref().map(|full_name| {
         let url = if project.repo_provider.as_deref() == Some("github") {
             format!("https://github.com/{full_name}")
@@ -58,6 +66,7 @@ pub fn serialize_project(conn: &Connection, cfg: &Config, project: &Project) -> 
         "productionBranch": project.production_branch,
         "ignoreCommand": project.ignore_command,
         "createdBy": creator.map(|u| json!({ "id": u.id, "name": u.name, "email": u.email })),
+        "pendingTransfer": pending_transfer,
         "autoDeploy": project.auto_deploy != 0,
         "previewDeploys": project.preview_deploys != 0,
         "productionUrl": url_for(cfg, &format!("{}.{}", project.slug, cfg.deployment_domain)),
@@ -92,6 +101,8 @@ pub fn router() -> Router<SharedState> {
     Router::new()
         .route("/api/projects", get(list_projects).post(create_project))
         .route("/api/projects/:key", get(get_project).patch(patch_project).delete(delete_project))
+        .route("/api/projects/:key/transfer", post(transfer_project))
+        .route("/api/projects/:key/transfer/cancel", post(cancel_transfer))
         .route("/api/projects/:key/deploy", post(trigger_deploy))
         .route("/api/projects/:key/deployments", get(list_deployments))
         .route("/api/projects/:key/logs", get(project_logs))
@@ -355,6 +366,113 @@ async fn patch_project(_user: AuthUser, State(state): State<SharedState>, Path(k
 
     projects::update(&conn, &project.id, &fields)?;
     let fresh = projects::by_id(&conn, &project.id)?.expect("just updated");
+    Ok(Json(json!({ "project": serialize_project(&conn, &state.config, &fresh) })))
+}
+
+#[derive(Deserialize)]
+struct TransferBody {
+    #[serde(rename = "userId")]
+    user_id: Option<String>,
+}
+
+/// Requests handing the project to a different workspace member. Creator
+/// only — deliberately no admin override here (see `require_creator`'s doc
+/// comment) — and this doesn't change `created_by` itself: it opens a
+/// `project_transfers` row and notifies the recipient, who has to accept it
+/// (see `routes::notifications::accept_transfer`) before ownership actually
+/// moves. Refuses outright if a transfer is already pending — cancel that
+/// one first (`cancel_transfer`), same reasoning as the schema's one-pending
+/// -per-project unique index.
+async fn transfer_project(
+    user: AuthUser,
+    State(state): State<SharedState>,
+    Path(key): Path<String>,
+    Json(body): Json<TransferBody>,
+) -> AppResult<Json<Value>> {
+    let conn = state.db.lock();
+    let project = require_project(&conn, &key)?;
+    require_creator(&user.user, &project.created_by)?;
+
+    if transfers::pending_for_project(&conn, &project.id)?.is_some() {
+        return Err(AppError::bad_request(
+            "transfer_pending",
+            "A transfer is already pending for this project — cancel it first",
+        ));
+    }
+
+    let Some(target_id) = body.user_id.filter(|v| !v.is_empty()) else {
+        return Err(AppError::bad_request("invalid_request", "userId is required"));
+    };
+    let Some(target) = users::by_id(&conn, &target_id)? else {
+        return Err(AppError::not_found("That person is not a member of this workspace"));
+    };
+    if target.id == project.created_by {
+        return Err(AppError::bad_request(
+            "already_owner",
+            format!("{} already owns this project", target.email),
+        ));
+    }
+
+    let transfer_id = crate::ids::new_transfer_id();
+    transfers::create(&conn, &transfer_id, &project.id, &user.user.id, &target.id)?;
+    let _ = notifications::create(
+        &conn,
+        notifications::NewNotification {
+            user_id: &target.id,
+            r#type: "transfer_requested",
+            title: &format!("{} wants to transfer {} to you", user.user.email, project.name),
+            body: Some("Accept to take over as its creator, or decline."),
+            project_id: Some(&project.id),
+            deployment_id: None,
+            transfer_id: Some(&transfer_id),
+            actor_id: Some(&user.user.id),
+        },
+    );
+    let _ = events::record(
+        &conn,
+        events::NewEvent {
+            r#type: "project.transfer_requested",
+            text: &format!("{} offered {} to {}", user.user.email, project.name, target.email),
+            project_id: Some(&project.id),
+            deployment_id: None,
+            user_id: Some(&user.user.id),
+        },
+    );
+
+    let fresh = projects::by_id(&conn, &project.id)?.expect("just inserted a transfer for it");
+    Ok(Json(json!({ "project": serialize_project(&conn, &state.config, &fresh) })))
+}
+
+/// Withdraws a still-pending transfer this project's creator requested —
+/// creator only, same as requesting it (see `require_creator`). The
+/// recipient's notification is left as-is (resolving to nothing
+/// accepts/declines it) but a fresh one tells them it was pulled, so a
+/// stale "accept?" prompt doesn't sit in their list with no context.
+async fn cancel_transfer(user: AuthUser, State(state): State<SharedState>, Path(key): Path<String>) -> AppResult<Json<Value>> {
+    let conn = state.db.lock();
+    let project = require_project(&conn, &key)?;
+    require_creator(&user.user, &project.created_by)?;
+
+    let Some(transfer) = transfers::pending_for_project(&conn, &project.id)? else {
+        return Err(AppError::bad_request("no_pending_transfer", "There's no pending transfer to cancel"));
+    };
+    transfers::resolve(&conn, &transfer.id, "cancelled")?;
+    let _ = notifications::mark_read_for_transfer(&conn, &transfer.id);
+    let _ = notifications::create(
+        &conn,
+        notifications::NewNotification {
+            user_id: &transfer.to_user_id,
+            r#type: "transfer_cancelled",
+            title: &format!("{} withdrew the transfer of {}", user.user.email, project.name),
+            body: None,
+            project_id: Some(&project.id),
+            deployment_id: None,
+            transfer_id: Some(&transfer.id),
+            actor_id: Some(&user.user.id),
+        },
+    );
+
+    let fresh = projects::by_id(&conn, &project.id)?.expect("still exists");
     Ok(Json(json!({ "project": serialize_project(&conn, &state.config, &fresh) })))
 }
 
