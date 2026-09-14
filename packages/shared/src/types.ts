@@ -1,4 +1,4 @@
-/** Shared domain types for the Avail Deploy platform. */
+/** Shared domain types for the Avail Harbor platform. */
 
 export type DeploymentState =
   | 'QUEUED'

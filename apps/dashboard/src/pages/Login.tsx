@@ -272,7 +272,7 @@ export function Login({ onSignedIn }: { onSignedIn: (user: User) => void }) {
       <div className="login-card">
         <h1>
           <Logo size={24} />
-          Avail Deploy
+          Avail Harbor
         </h1>
         <p className="sub">
           {isResetStep

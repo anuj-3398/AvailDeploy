@@ -186,7 +186,7 @@ export const config = {
 
   // Mail
   smtpUrl: process.env.SMTP_URL ?? null,
-  mailFrom: process.env.MAIL_FROM ?? 'Avail Deploy <deploy@availproject.org>',
+  mailFrom: process.env.MAIL_FROM ?? 'Avail Harbor <deploy@availproject.org>',
 
   // Google sign-in (identity only — no repository access)
   google: {

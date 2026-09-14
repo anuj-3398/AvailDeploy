@@ -76,7 +76,7 @@ pub struct BranchHead {
 /// for it in the logs. 20s comfortably covers a slow real response.
 fn client() -> reqwest::Client {
     reqwest::Client::builder()
-        .user_agent("avail-deploy")
+        .user_agent("avail-harbor")
         .timeout(std::time::Duration::from_secs(20))
         .build()
         .expect("build reqwest client")

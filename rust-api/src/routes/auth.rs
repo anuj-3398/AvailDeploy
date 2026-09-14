@@ -183,11 +183,11 @@ async fn login(State(state): State<SharedState>, Json(body): Json<LoginBody>) ->
     }
 
     let log = logger::scoped("mail");
-    let subject = format!("{code} is your Avail Deploy sign-in code");
+    let subject = format!("{code} is your Avail Harbor sign-in code");
     log.info(format!("[mail:console] to={email} subject={subject}"));
     let minutes = state.config.login_code_ttl_ms / 60_000;
     for line in [
-        format!("Your Avail Deploy sign-in code is: {code}"),
+        format!("Your Avail Harbor sign-in code is: {code}"),
         String::new(),
         format!("It expires in {minutes} minutes."),
         "If you did not request this, you can ignore this email.".to_string(),
@@ -388,20 +388,39 @@ async fn set_password(user: AuthUser, State(state): State<SharedState>, Json(bod
 /// derived key isn't used for anything else, so this token is worthless
 /// for any other endpoint even if intercepted.
 fn password_reset_token(state: &SharedState, email: &str) -> String {
-    let nonce = format!("{email}:{}", now_ms());
-    format!("{}.{}", URL_SAFE_NO_PAD.encode(&nonce), state.crypto.hmac(&nonce, "password-reset"))
+    password_reset_token_raw(&state.crypto, email, now_ms())
+}
+
+/// Pure counterpart to `password_reset_token`, taking `issued_at` explicitly
+/// instead of always stamping "now" — lets tests mint a token that's
+/// already however old they need, without waiting on the wall clock.
+fn password_reset_token_raw(crypto: &crate::crypto::Crypto, email: &str, issued_at: i64) -> String {
+    let nonce = format!("{email}:{issued_at}");
+    format!("{}.{}", URL_SAFE_NO_PAD.encode(&nonce), crypto.hmac(&nonce, "password-reset"))
 }
 
 fn verify_password_reset_token(state: &SharedState, raw: &str, email: &str) -> bool {
+    verify_password_reset_token_at(&state.crypto, raw, email, now_ms())
+}
+
+/// The actual check, parameterized on "now" so the 5-minute boundary can be
+/// pinned exactly in tests without waiting on the wall clock or standing up
+/// a full `SharedState` (db + config) just to reach `state.crypto`.
+fn verify_password_reset_token_at(crypto: &crate::crypto::Crypto, raw: &str, email: &str, now: i64) -> bool {
     let Some((payload, signature)) = raw.split_once('.') else { return false };
     let Ok(nonce_bytes) = URL_SAFE_NO_PAD.decode(payload) else { return false };
     let Ok(nonce) = String::from_utf8(nonce_bytes) else { return false };
-    if !safe_equal(&state.crypto.hmac(&nonce, "password-reset"), signature) {
+    if !safe_equal(&crypto.hmac(&nonce, "password-reset"), signature) {
         return false;
     }
     let Some((nonce_email, issued_at)) = nonce.split_once(':') else { return false };
     let Ok(issued_at) = issued_at.parse::<i64>() else { return false };
-    nonce_email == email && now_ms() - issued_at <= 10 * 60 * 1000
+    // Shorter than the OAuth state window (10 min) on purpose: this token
+    // is stateless and not single-use (nothing marks it spent after a
+    // successful reset), so a shorter window is the cheapest way to shrink
+    // how long a leaked token — browser history, a shared machine, a proxy
+    // log — would stay valid to replay.
+    nonce_email == email && now - issued_at <= 5 * 60 * 1000
 }
 
 #[derive(Deserialize)]
@@ -738,7 +757,8 @@ async fn google_callback(State(state): State<SharedState>, jar: CookieJar, heade
 
 #[cfg(test)]
 mod tests {
-    use super::validate_password;
+    use super::{password_reset_token_raw, validate_password, verify_password_reset_token_at};
+    use crate::crypto::Crypto;
 
     #[test]
     fn accepts_a_password_meeting_every_rule() {
@@ -767,5 +787,67 @@ mod tests {
     fn rejects_missing_special_character() {
         let err = validate_password("Password123").unwrap_err();
         assert!(err.message.contains("special character"), "{}", err.message);
+    }
+
+    const FIVE_MIN_MS: i64 = 5 * 60 * 1000;
+
+    #[test]
+    fn accepts_a_password_reset_token_issued_right_now() {
+        let crypto = Crypto::new("test-secret");
+        let now = 1_700_000_000_000i64;
+        let token = password_reset_token_raw(&crypto, "user@example.com", now);
+        assert!(verify_password_reset_token_at(&crypto, &token, "user@example.com", now));
+    }
+
+    #[test]
+    fn accepts_a_password_reset_token_exactly_at_the_five_minute_boundary() {
+        let crypto = Crypto::new("test-secret");
+        let now = 1_700_000_000_000i64;
+        let token = password_reset_token_raw(&crypto, "user@example.com", now - FIVE_MIN_MS);
+        assert!(verify_password_reset_token_at(&crypto, &token, "user@example.com", now));
+    }
+
+    #[test]
+    fn rejects_a_password_reset_token_one_second_past_five_minutes() {
+        let crypto = Crypto::new("test-secret");
+        let now = 1_700_000_000_000i64;
+        let token = password_reset_token_raw(&crypto, "user@example.com", now - FIVE_MIN_MS - 1000);
+        assert!(!verify_password_reset_token_at(&crypto, &token, "user@example.com", now));
+    }
+
+    /// Regression guard for the 10 -> 5 minute shortening: an 8-minute-old
+    /// token passed under the old window and must now be rejected.
+    #[test]
+    fn rejects_a_password_reset_token_that_the_old_ten_minute_window_would_have_accepted() {
+        let crypto = Crypto::new("test-secret");
+        let now = 1_700_000_000_000i64;
+        let token = password_reset_token_raw(&crypto, "user@example.com", now - 8 * 60 * 1000);
+        assert!(!verify_password_reset_token_at(&crypto, &token, "user@example.com", now));
+    }
+
+    #[test]
+    fn rejects_a_password_reset_token_issued_for_a_different_email() {
+        let crypto = Crypto::new("test-secret");
+        let now = 1_700_000_000_000i64;
+        let token = password_reset_token_raw(&crypto, "user@example.com", now);
+        assert!(!verify_password_reset_token_at(&crypto, &token, "someone-else@example.com", now));
+    }
+
+    #[test]
+    fn rejects_a_tampered_password_reset_token() {
+        let crypto = Crypto::new("test-secret");
+        let now = 1_700_000_000_000i64;
+        let mut token = password_reset_token_raw(&crypto, "user@example.com", now);
+        token.push('x');
+        assert!(!verify_password_reset_token_at(&crypto, &token, "user@example.com", now));
+    }
+
+    #[test]
+    fn rejects_a_password_reset_token_signed_under_a_different_secret() {
+        let crypto_a = Crypto::new("test-secret-a");
+        let crypto_b = Crypto::new("test-secret-b");
+        let now = 1_700_000_000_000i64;
+        let token = password_reset_token_raw(&crypto_a, "user@example.com", now);
+        assert!(!verify_password_reset_token_at(&crypto_b, &token, "user@example.com", now));
     }
 }
